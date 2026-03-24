@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarCheck, Users, Scissors, Settings, BarChart3, LogOut } from "lucide-react";
+import { CalendarCheck, Users, Scissors, Settings, BarChart3, LogOut, UserCheck, MessageSquare, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import SalonProfileEditor from "@/components/dashboard/SalonProfileEditor";
 import ServiceManager from "@/components/dashboard/ServiceManager";
 import BookingManager from "@/components/dashboard/BookingManager";
 import SettingsPanel from "@/components/dashboard/SettingsPanel";
+import TechnicianManager from "@/components/dashboard/TechnicianManager";
+import PromotionSMS from "@/components/dashboard/PromotionSMS";
+import CouponManager from "@/components/dashboard/CouponManager";
 
 const Dashboard = () => {
   const [tab, setTab] = useState("overview");
@@ -58,10 +61,13 @@ const Dashboard = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="overview">Bookings</TabsTrigger>
             <TabsTrigger value="profile">Salon Profile</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="technicians">Technicians</TabsTrigger>
+            <TabsTrigger value="promotions">Promotion SMS</TabsTrigger>
+            <TabsTrigger value="coupons">Coupons</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -75,6 +81,18 @@ const Dashboard = () => {
 
           <TabsContent value="services" className="mt-6">
             <ServiceManager />
+          </TabsContent>
+
+          <TabsContent value="technicians" className="mt-6">
+            <TechnicianManager />
+          </TabsContent>
+
+          <TabsContent value="promotions" className="mt-6">
+            <PromotionSMS />
+          </TabsContent>
+
+          <TabsContent value="coupons" className="mt-6">
+            <CouponManager />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
