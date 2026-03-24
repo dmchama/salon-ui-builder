@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarCheck, Users, Scissors, Settings, BarChart3, LogOut } from "lucide-react";
+import { CalendarCheck, Users, Scissors, Settings, BarChart3, LogOut, UserCheck, MessageSquare, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import SalonProfileEditor from "@/components/dashboard/SalonProfileEditor";
 import ServiceManager from "@/components/dashboard/ServiceManager";
 import BookingManager from "@/components/dashboard/BookingManager";
 import SettingsPanel from "@/components/dashboard/SettingsPanel";
+import TechnicianManager from "@/components/dashboard/TechnicianManager";
+import PromotionSMS from "@/components/dashboard/PromotionSMS";
+import CouponManager from "@/components/dashboard/CouponManager";
 
 const Dashboard = () => {
   const [tab, setTab] = useState("overview");
