@@ -27,6 +27,37 @@ export interface Service {
   category: string;
 }
 
+export interface Technician {
+  id: string;
+  name: string;
+  image: string;
+  specializations: string[]; // service IDs
+  experience: string;
+  rating: number;
+}
+
+export const technicians: Record<string, Technician[]> = {
+  "1": [
+    { id: "t1", name: "Nimal Perera", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop", specializations: ["s1", "s2", "s3"], experience: "8 years", rating: 4.9 },
+    { id: "t2", name: "Sanduni Silva", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop", specializations: ["s2", "s3", "s4"], experience: "5 years", rating: 4.7 },
+    { id: "t3", name: "Kamal Fernando", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop", specializations: ["s1", "s4"], experience: "10 years", rating: 4.8 },
+  ],
+  "2": [
+    { id: "t4", name: "Dilani Jayawardena", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop", specializations: ["s5", "s7"], experience: "6 years", rating: 4.8 },
+    { id: "t5", name: "Rashmi Kumari", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop", specializations: ["s5", "s6"], experience: "4 years", rating: 4.6 },
+    { id: "t6", name: "Tharushi Mendis", image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop", specializations: ["s6", "s7"], experience: "3 years", rating: 4.5 },
+  ],
+  "3": [
+    { id: "t7", name: "Ruwan de Silva", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop", specializations: ["s8", "s9", "s10"], experience: "12 years", rating: 4.9 },
+    { id: "t8", name: "Ashan Bandara", image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop", specializations: ["s8", "s10"], experience: "7 years", rating: 4.7 },
+  ],
+  "4": [
+    { id: "t9", name: "Nimali Weerasinghe", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop", specializations: ["s11", "s14"], experience: "9 years", rating: 4.8 },
+    { id: "t10", name: "Sachini Perera", image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&h=100&fit=crop", specializations: ["s12", "s13"], experience: "5 years", rating: 4.6 },
+    { id: "t11", name: "Hasini Gunawardena", image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop", specializations: ["s11", "s12", "s13", "s14"], experience: "7 years", rating: 4.9 },
+  ],
+};
+
 export const salons: Salon[] = [
   {
     id: "1",
