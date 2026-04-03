@@ -5,9 +5,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Clock, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, DollarSign, Scissors } from "lucide-react";
 import { toast } from "sonner";
 
 interface Service {
@@ -18,6 +28,7 @@ interface Service {
   duration: number;
   category: string;
   isActive: boolean;
+  image?: string;
 }
 
 const initialServices: Service[] = [
@@ -29,8 +40,44 @@ const initialServices: Service[] = [
 ];
 
 const emptyService: Omit<Service, "id"> = {
-  name: "", description: "", price: 0, duration: 30, category: "Hair", isActive: true,
+  name: "", description: "", price: 0, duration: 30, category: "Hair", isActive: true, image: "",
 };
+
+const ServiceForm = ({ service, onChange }: { service: Omit<Service, "id"> | Service; onChange: (field: string, value: any) => void }) => (
+  <div className="space-y-4">
+    <div className="space-y-2">
+      <Label>Service Name</Label>
+      <Input value={service.name} onChange={e => onChange("name", e.target.value)} placeholder="e.g., Haircut & Styling" />
+    </div>
+    <div className="space-y-2">
+      <Label>Description</Label>
+      <Textarea value={service.description} onChange={e => onChange("description", e.target.value)} rows={4} className="resize-y min-h-[100px]" placeholder="Detailed description of the service..." />
+    </div>
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Price (Rs.)</Label>
+        <Input type="number" value={service.price} onChange={e => onChange("price", Number(e.target.value))} />
+      </div>
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Duration (mins)</Label>
+        <Input type="number" value={service.duration} onChange={e => onChange("duration", Number(e.target.value))} />
+      </div>
+    </div>
+    <div className="space-y-2">
+      <Label>Category</Label>
+      <Input value={service.category} onChange={e => onChange("category", e.target.value)} placeholder="e.g., Hair, Skin, Bridal" />
+    </div>
+    <div className="space-y-2">
+      <Label>Service Image (Optional)</Label>
+      <Input type="file" accept="image/*" onChange={(e) => {
+        if (e.target.files && e.target.files.length > 0) {
+          onChange("image", URL.createObjectURL(e.target.files[0]));
+        }
+      }} className="text-xs" />
+      {service.image && <img src={service.image} alt="Preview" className="h-16 w-16 object-cover border border-black/10 mt-2" />}
+    </div>
+  </div>
+);
 
 const ServiceManager = () => {
   const [services, setServices] = useState<Service[]>(initialServices);
@@ -38,6 +85,7 @@ const ServiceManager = () => {
   const [newService, setNewService] = useState(emptyService);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
   const handleAdd = () => {
     if (!newService.name || !newService.price) {
@@ -60,39 +108,13 @@ const ServiceManager = () => {
 
   const handleDelete = (id: string) => {
     setServices(prev => prev.filter(s => s.id !== id));
+    setServiceToDelete(null);
     toast.success("Service removed");
   };
 
   const toggleActive = (id: string) => {
     setServices(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
   };
-
-  const ServiceForm = ({ service, onChange }: { service: Omit<Service, "id"> | Service; onChange: (field: string, value: any) => void }) => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Service Name</Label>
-        <Input value={service.name} onChange={e => onChange("name", e.target.value)} placeholder="e.g., Haircut & Styling" />
-      </div>
-      <div className="space-y-2">
-        <Label>Description</Label>
-        <Textarea value={service.description} onChange={e => onChange("description", e.target.value)} rows={2} />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Price (Rs.)</Label>
-          <Input type="number" value={service.price} onChange={e => onChange("price", Number(e.target.value))} />
-        </div>
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Duration (mins)</Label>
-          <Input type="number" value={service.duration} onChange={e => onChange("duration", Number(e.target.value))} />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Category</Label>
-        <Input value={service.category} onChange={e => onChange("category", e.target.value)} placeholder="e.g., Hair, Skin, Bridal" />
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-4">
@@ -121,15 +143,28 @@ const ServiceManager = () => {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-medium text-sm">{service.name}</h3>
-                    <Badge variant="secondary" className="text-xs">{service.category}</Badge>
-                    {!service.isActive && <Badge variant="outline" className="text-xs">Inactive</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{service.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">Rs. {service.price.toLocaleString()}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {service.duration} mins</span>
+                  <div className="flex gap-4">
+                    {service.image ? (
+                      <div className="w-16 h-16 shrink-0 border border-black/5 bg-black/5">
+                        <img src={service.image} alt={service.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 shrink-0 border border-black/5 bg-black/5 flex items-center justify-center">
+                         <Scissors className="h-5 w-5 text-black/20" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-sm">{service.name}</h3>
+                        <Badge variant="secondary" className="text-xs">{service.category}</Badge>
+                        {!service.isActive && <Badge variant="outline" className="text-xs">Inactive</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{service.description}</p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Rs. {service.price.toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {service.duration} mins</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -142,7 +177,7 @@ const ServiceManager = () => {
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(service.id)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setServiceToDelete(service.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -151,6 +186,23 @@ const ServiceManager = () => {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={!!serviceToDelete} onOpenChange={(open) => !open && setServiceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the service from your list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => serviceToDelete && handleDelete(serviceToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

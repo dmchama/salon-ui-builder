@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { initialHeroSlides, HeroSlide } from "@/data/mockSalons";
 
 // ─── Mock Data ───
 const mockPlans = [
@@ -230,45 +232,173 @@ const SalonModeration = () => (
   </div>
 );
 
-const WebsiteManager = () => (
-  <div className="space-y-6">
-    <h2 className="font-display text-lg font-semibold">Website Management</h2>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Card><CardHeader><CardTitle className="text-base">Homepage Hero Section</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div><Label>Hero Title</Label><Input defaultValue="Discover & Book the Best Salons Near You" /></div>
-          <div><Label>Subtitle</Label><Textarea rows={2} defaultValue="Browse top-rated salons, explore services, and book your appointment instantly." /></div>
-          <div><Label>CTA Button Text</Label><Input defaultValue="Browse Salons" /></div>
-          <Button size="sm" onClick={() => toast.success("Hero section updated")}>Save Changes</Button>
+const WebsiteManager = () => {
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("heroSlides");
+    if (stored) setSlides(JSON.parse(stored));
+    else setSlides(initialHeroSlides);
+  }, []);
+
+  const saveSlides = (newSlides: HeroSlide[]) => {
+    setSlides(newSlides);
+    localStorage.setItem("heroSlides", JSON.stringify(newSlides));
+    toast.success("Hero slides updated successfully");
+  };
+
+  const handleDelete = (id: string) => {
+    saveSlides(slides.filter(s => s.id !== id));
+  };
+
+  const handleSaveSlide = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const mediaType = formData.get("mediaType") as "image" | "video";
+    
+    // Simulating file upload - in a real app this would upload to S3/Cloudinary
+    let mediaUrl = editingSlide?.mediaUrl || "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1920&q=80";
+    const file = formData.get("mediaFile") as File;
+    if (file && file.size > 0) {
+       mediaUrl = mediaType === 'video' 
+         ? "https://assets.mixkit.co/videos/preview/mixkit-working-with-the-hair-of-a-woman-in-a-hair-43486-large.mp4"
+         : "https://images.unsplash.com/photo-1600948836101-f9ffda59d250?w=1920&q=80";
+    }
+
+    const newSlide: HeroSlide = {
+      id: editingSlide ? editingSlide.id : `slide-${Date.now()}`,
+      mediaType,
+      mediaUrl,
+      title: formData.get("title") as string,
+      subtitle: formData.get("subtitle") as string,
+      buttonText: formData.get("buttonText") as string,
+    };
+
+    saveSlides(editingSlide ? slides.map(s => s.id === editingSlide.id ? newSlide : s) : [...slides, newSlide]);
+    setIsDialogOpen(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold">Website Management</h2>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+          <CardTitle className="text-base font-bold uppercase tracking-widest">Homepage Hero Slides</CardTitle>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="bg-gold hover:bg-gold/90 text-white rounded-none tracking-widest uppercase text-xs" onClick={() => setEditingSlide(null)}>
+                <Plus className="h-4 w-4 mr-2" /> Add Slide
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <form onSubmit={handleSaveSlide}>
+                <DialogHeader>
+                  <DialogTitle className="font-display uppercase tracking-widest">{editingSlide ? 'Edit Slide' : 'Add New Slide'}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Media Type</Label>
+                    <Select name="mediaType" defaultValue={editingSlide?.mediaType || "image"}>
+                      <SelectTrigger className="rounded-none border-black/20"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="image">Image Background</SelectItem>
+                        <SelectItem value="video">Video Background</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Upload Media</Label>
+                    <Input type="file" name="mediaFile" accept="image/*,video/*" className="rounded-none border-black/20 file:bg-black/5 file:border-0 file:rounded-none file:px-4 file:py-1 file:mr-4 file:uppercase file:tracking-widest file:text-xs" />
+                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest">Simulated upload. Leave empty to keep existing.</p>
+                  </div>
+                  <div>
+                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Main Title</Label>
+                    <Input name="title" defaultValue={editingSlide?.title || ""} className="rounded-none border-black/20" required />
+                  </div>
+                  <div>
+                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Subtitle / Description</Label>
+                    <Textarea name="subtitle" rows={2} defaultValue={editingSlide?.subtitle || ""} className="rounded-none border-black/20" required />
+                  </div>
+                  <div>
+                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Button Text</Label>
+                    <Input name="buttonText" defaultValue={editingSlide?.buttonText || "Book Now"} className="rounded-none border-black/20" required />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t border-black/10">
+                  <Button type="button" variant="outline" className="rounded-none tracking-widest uppercase text-xs" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="bg-black hover:bg-black/80 text-white rounded-none tracking-widest uppercase text-xs">Save Slide</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-black/10 bg-black/[0.02]">
+                <TableHead className="uppercase tracking-widest text-xs font-bold text-black py-4 px-6 w-[120px]">Media</TableHead>
+                <TableHead className="uppercase tracking-widest text-xs font-bold text-black py-4">Content</TableHead>
+                <TableHead className="uppercase tracking-widest text-xs font-bold text-black py-4 text-right px-6">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {slides.map(slide => (
+                <TableRow key={slide.id} className="border-b border-black/5">
+                  <TableCell className="px-6 py-4">
+                    <div className="w-20 h-12 bg-black/10 relative overflow-hidden group">
+                      {slide.mediaType === 'video' ? (
+                        <video src={slide.mediaUrl} className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={slide.mediaUrl} className="w-full h-full object-cover" alt="slide" />
+                      )}
+                      <div className="absolute top-1 right-1 bg-black/80 text-white text-[8px] uppercase tracking-widest px-1 py-0.5">{slide.mediaType}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    <div className="font-display font-semibold text-sm mb-1">{slide.title}</div>
+                    <div className="text-xs text-muted-foreground font-light line-clamp-1">{slide.subtitle}</div>
+                  </TableCell>
+                  <TableCell className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 hover:text-black rounded-none" onClick={() => { setEditingSlide(slide); setIsDialogOpen(true); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-none" onClick={() => handleDelete(slide.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-      <Card><CardHeader><CardTitle className="text-base">Footer Settings</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div><Label>Footer Text</Label><Input defaultValue="© 2026 GlamBook. All rights reserved." /></div>
-          <div><Label>Support Email</Label><Input defaultValue="support@glambook.com" /></div>
-          <div><Label>Phone Number</Label><Input defaultValue="+91 98765 43210" /></div>
-          <div className="flex items-center gap-2"><Switch defaultChecked /><Label>Show social media links</Label></div>
-          <Button size="sm" onClick={() => toast.success("Footer updated")}>Save Changes</Button>
-        </CardContent>
-      </Card>
-      <Card><CardHeader><CardTitle className="text-base">SEO Settings</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div><Label>Meta Title</Label><Input defaultValue="GlamBook - Salon Booking Platform" /></div>
-          <div><Label>Meta Description</Label><Textarea rows={2} defaultValue="Find and book the best salons near you. Browse services, check reviews, and book instantly." /></div>
-          <Button size="sm" onClick={() => toast.success("SEO settings updated")}>Save Changes</Button>
-        </CardContent>
-      </Card>
-      <Card><CardHeader><CardTitle className="text-base">Announcement Bar</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2"><Switch /><Label>Enable announcement bar</Label></div>
-          <div><Label>Message</Label><Input placeholder="e.g. 🎉 20% off all bookings this week!" /></div>
-          <div><Label>Link URL</Label><Input placeholder="/salons" /></div>
-          <Button size="sm" onClick={() => toast.success("Announcement bar updated")}>Save Changes</Button>
-        </CardContent>
-      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-black/10">
+        <Card className="rounded-none border border-black/10 shadow-none"><CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">Footer Settings</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Footer Text</Label><Input className="rounded-none border-black/20" defaultValue="© 2026 GlamBook. All rights reserved." /></div>
+            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Support Email</Label><Input className="rounded-none border-black/20" defaultValue="support@glambook.com" /></div>
+            <Button className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs" onClick={() => toast.success("Footer updated")}>Save Changes</Button>
+          </CardContent>
+        </Card>
+        <Card className="rounded-none border border-black/10 shadow-none"><CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">SEO Settings</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Title</Label><Input className="rounded-none border-black/20" defaultValue="GlamBook - Luxury Salon Booking" /></div>
+            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Description</Label><Textarea rows={2} className="rounded-none border-black/20" defaultValue="Book premium salon services instantly." /></div>
+            <Button className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs" onClick={() => toast.success("SEO settings updated")}>Save Changes</Button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const PromotionManager = () => (
   <div className="space-y-4">
@@ -418,47 +548,54 @@ const Admin = () => {
   const [tab, setTab] = useState("stats");
 
   return (
-    <div className="min-h-screen bg-secondary/20">
-      <div className="bg-card border-b">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <Scissors className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold">GlamBook</span>
-            <Badge variant="destructive" className="ml-2">Admin</Badge>
-          </div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-[#FDFDFD]">
+      <div className="bg-black text-white px-8">
+        <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">
-            <Link to="/dashboard"><Button variant="ghost" size="sm">Owner Dashboard</Button></Link>
-            <Link to="/"><Button variant="ghost" size="sm" className="gap-1"><LogOut className="h-4 w-4" /> Logout</Button></Link>
+            <span className="font-display font-bold text-xl md:text-2xl tracking-widest uppercase">GLAMBOOK</span>
+            <span className="text-red-500 tracking-widest text-xs uppercase px-3 border-l border-white/20 hidden md:block">System Admin</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/dashboard">
+              <span className="text-xs uppercase tracking-widest text-white/50 hover:text-white transition-colors">Owner Portal</span>
+            </Link>
+            <Link to="/">
+              <span className="text-xs uppercase tracking-widest text-white/50 hover:text-white transition-colors flex items-center gap-2">
+                <LogOut className="h-4 w-4" /> Sign Out
+              </span>
+            </Link>
           </div>
         </div>
       </div>
 
-      <div className="container py-8">
-        <h1 className="font-display text-2xl font-bold mb-6">Admin Panel</h1>
+      <div className="container py-12 max-w-7xl">
+        <h1 className="font-display text-4xl font-bold mb-12 uppercase tracking-widest text-black">Admin Console</h1>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="stats" className="gap-1"><BarChart3 className="h-3.5 w-3.5" /> Statistics</TabsTrigger>
-            <TabsTrigger value="plans" className="gap-1"><CreditCard className="h-3.5 w-3.5" /> Plans</TabsTrigger>
-            <TabsTrigger value="accounts" className="gap-1"><Users className="h-3.5 w-3.5" /> Accounts</TabsTrigger>
-            <TabsTrigger value="moderation" className="gap-1"><Shield className="h-3.5 w-3.5" /> Moderation</TabsTrigger>
-            <TabsTrigger value="website" className="gap-1"><Globe className="h-3.5 w-3.5" /> Website</TabsTrigger>
-            <TabsTrigger value="promotions" className="gap-1"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
-            <TabsTrigger value="coupons" className="gap-1"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
-            <TabsTrigger value="sms" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
+          <TabsList className="flex flex-wrap h-auto gap-8 bg-transparent border-b border-black/10 rounded-none w-full justify-start p-0 mb-8 overflow-x-auto">
+            <TabsTrigger value="stats" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><BarChart3 className="h-3.5 w-3.5" /> Statistics</TabsTrigger>
+            <TabsTrigger value="plans" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><CreditCard className="h-3.5 w-3.5" /> Plans</TabsTrigger>
+            <TabsTrigger value="accounts" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Users className="h-3.5 w-3.5" /> Accounts</TabsTrigger>
+            <TabsTrigger value="moderation" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Shield className="h-3.5 w-3.5" /> Moderation</TabsTrigger>
+            <TabsTrigger value="website" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Globe className="h-3.5 w-3.5" /> Website</TabsTrigger>
+            <TabsTrigger value="promotions" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
+            <TabsTrigger value="coupons" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
+            <TabsTrigger value="sms" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="stats" className="mt-6"><SystemStats /></TabsContent>
-          <TabsContent value="plans" className="mt-6"><SubscriptionManager /></TabsContent>
-          <TabsContent value="accounts" className="mt-6"><AccountManager /></TabsContent>
-          <TabsContent value="moderation" className="mt-6"><SalonModeration /></TabsContent>
-          <TabsContent value="website" className="mt-6"><WebsiteManager /></TabsContent>
-          <TabsContent value="promotions" className="mt-6"><PromotionManager /></TabsContent>
-          <TabsContent value="coupons" className="mt-6"><CouponManager /></TabsContent>
-          <TabsContent value="sms" className="mt-6"><SmsManager /></TabsContent>
+          <div className="bg-white border border-black/5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-8 min-h-[500px]">
+            <TabsContent value="stats" className="mt-0 outline-none"><SystemStats /></TabsContent>
+            <TabsContent value="plans" className="mt-0 outline-none"><SubscriptionManager /></TabsContent>
+            <TabsContent value="accounts" className="mt-0 outline-none"><AccountManager /></TabsContent>
+            <TabsContent value="moderation" className="mt-0 outline-none"><SalonModeration /></TabsContent>
+            <TabsContent value="website" className="mt-0 outline-none"><WebsiteManager /></TabsContent>
+            <TabsContent value="promotions" className="mt-0 outline-none"><PromotionManager /></TabsContent>
+            <TabsContent value="coupons" className="mt-0 outline-none"><CouponManager /></TabsContent>
+            <TabsContent value="sms" className="mt-0 outline-none"><SmsManager /></TabsContent>
+          </div>
         </Tabs>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

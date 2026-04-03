@@ -76,7 +76,7 @@ const SalonProfileEditor = () => {
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
-            <Textarea value={profile.description} onChange={e => handleProfileChange("description", e.target.value)} rows={3} />
+            <Textarea value={profile.description} onChange={e => handleProfileChange("description", e.target.value)} rows={5} className="resize-y min-h-[120px]" placeholder="Write a brief overview of your salon..." />
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Address</Label>

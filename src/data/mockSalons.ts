@@ -25,6 +25,7 @@ export interface Service {
   price: number;
   duration: string;
   category: string;
+  image?: string;
 }
 
 export interface Technician {
@@ -35,6 +36,42 @@ export interface Technician {
   experience: string;
   rating: number;
 }
+
+export interface HeroSlide {
+  id: string;
+  mediaType: "image" | "video";
+  mediaUrl: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+}
+
+export const initialHeroSlides: HeroSlide[] = [
+  {
+    id: "slide-1",
+    mediaType: "image",
+    mediaUrl: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1920&q=80",
+    title: "Experience the Elegance of Liyo Salon",
+    subtitle: "Where Expert Care Meets Luxurious Services for a Transformative Beauty Experience.",
+    buttonText: "Book Now"
+  },
+  {
+    id: "slide-2",
+    mediaType: "image",
+    mediaUrl: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1920&q=80",
+    title: "Unleash Your True Beauty",
+    subtitle: "Discover our premium coloring and styling services tailored just for you.",
+    buttonText: "Our Services"
+  },
+  {
+    id: "slide-3",
+    mediaType: "video",
+    mediaUrl: "https://assets.mixkit.co/videos/preview/mixkit-working-with-the-hair-of-a-woman-in-a-hair-43486-large.mp4",
+    title: "Masterful Precision",
+    subtitle: "Experience the art of modern hairstyling by international experts.",
+    buttonText: "Meet the Team"
+  }
+];
 
 export const technicians: Record<string, Technician[]> = {
   "1": [
@@ -74,7 +111,7 @@ export const salons: Salon[] = [
     priceRange: "$$$ ",
     isOpen: true,
     services: [
-      { id: "s1", name: "Haircut & Styling", description: "Professional cut and blow-dry", price: 2500, duration: "45 min", category: "Hair" },
+      { id: "s1", name: "Haircut & Styling", description: "Professional cut and blow-dry", price: 2500, duration: "45 min", category: "Hair", image: "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=200&h=200&fit=crop" },
       { id: "s2", name: "Hair Coloring", description: "Full color with premium products", price: 5500, duration: "90 min", category: "Hair" },
       { id: "s3", name: "Keratin Treatment", description: "Smoothing keratin treatment", price: 8000, duration: "120 min", category: "Hair" },
       { id: "s4", name: "Bridal Package", description: "Complete bridal hair and makeup", price: 15000, duration: "180 min", category: "Special" },
