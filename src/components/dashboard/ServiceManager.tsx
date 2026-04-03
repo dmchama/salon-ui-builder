@@ -24,8 +24,8 @@ interface Service {
   id: string;
   name: string;
   description: string;
-  price: number;
-  duration: number;
+  price?: number;
+  duration?: number;
   category: string;
   isActive: boolean;
   image?: string;
@@ -40,7 +40,7 @@ const initialServices: Service[] = [
 ];
 
 const emptyService: Omit<Service, "id"> = {
-  name: "", description: "", price: 0, duration: 30, category: "Hair", isActive: true, image: "",
+  name: "", description: "", price: undefined, duration: undefined, category: "Hair", isActive: true, image: "",
 };
 
 const ServiceForm = ({ service, onChange }: { service: Omit<Service, "id"> | Service; onChange: (field: string, value: any) => void }) => (
@@ -55,12 +55,12 @@ const ServiceForm = ({ service, onChange }: { service: Omit<Service, "id"> | Ser
     </div>
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
-        <Label className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Price (Rs.)</Label>
-        <Input type="number" value={service.price} onChange={e => onChange("price", Number(e.target.value))} />
+        <Label className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Price (Rs.) <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+        <Input type="number" value={service.price === undefined ? "" : service.price} onChange={e => onChange("price", e.target.value === "" ? undefined : Number(e.target.value))} placeholder="Leave empty for 'Varies'" />
       </div>
       <div className="space-y-2">
-        <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Duration (mins)</Label>
-        <Input type="number" value={service.duration} onChange={e => onChange("duration", Number(e.target.value))} />
+        <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Duration (mins) <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+        <Input type="number" value={service.duration === undefined ? "" : service.duration} onChange={e => onChange("duration", e.target.value === "" ? undefined : Number(e.target.value))} placeholder="Leave empty for 'Varies'" />
       </div>
     </div>
     <div className="space-y-2">
@@ -88,8 +88,8 @@ const ServiceManager = () => {
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
   const handleAdd = () => {
-    if (!newService.name || !newService.price) {
-      toast.error("Please fill in name and price");
+    if (!newService.name) {
+      toast.error("Please fill in the service name");
       return;
     }
     const service: Service = { ...newService, id: `s${Date.now()}` };
@@ -161,8 +161,8 @@ const ServiceManager = () => {
                       </div>
                       <p className="text-xs text-muted-foreground mb-2">{service.description}</p>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Rs. {service.price.toLocaleString()}</span>
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {service.duration} mins</span>
+                        <span className="font-medium text-foreground">{service.price ? `Rs. ${service.price.toLocaleString()}` : 'Price Varies'}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {service.duration ? `${service.duration} mins` : 'Duration Varies'}</span>
                       </div>
                     </div>
                   </div>

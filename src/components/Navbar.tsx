@@ -21,7 +21,7 @@ const Navbar = () => {
           <Link to="/pricing" className="text-xs font-semibold tracking-widest text-white/80 hover:text-white uppercase transition-colors">Pricing Plans</Link>
           <Link to="/login" className="text-xs font-semibold tracking-widest text-white/80 hover:text-white uppercase transition-colors">Contact</Link>
           <Link to="/register">
-            <Button className="bg-gold text-white hover:bg-gold/90 font-bold uppercase tracking-widest text-xs px-6 py-5 rounded-none border border-gold">Book Now</Button>
+            <Button className="bg-gold text-white hover:bg-gold/90 font-bold uppercase tracking-widest text-xs px-6 py-5 rounded-none border border-gold">Join Us</Button>
           </Link>
         </div>
 
@@ -40,7 +40,7 @@ const Navbar = () => {
           <Link to="/login" className="block text-xs font-semibold tracking-widest text-white/80 uppercase" onClick={() => setMobileOpen(false)}>Contact</Link>
           <div className="pt-2">
             <Link to="/register" onClick={() => setMobileOpen(false)}>
-               <Button className="w-full bg-gold text-white hover:bg-gold/90 font-bold uppercase tracking-widest text-xs py-5 rounded-none">Book Now</Button>
+               <Button className="w-full bg-gold text-white hover:bg-gold/90 font-bold uppercase tracking-widest text-xs py-5 rounded-none">Join Us</Button>
             </Link>
           </div>
         </div>

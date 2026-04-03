@@ -37,7 +37,7 @@ const Index = () => {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative pt-32 pb-32 min-h-[90vh] flex items-center justify-start overflow-hidden">
+      <section className="relative pt-32 pb-32 min-h-[90vh] flex items-center justify-start overflow-hidden bg-black neon-edge-glow">
         {slides.length > 0 && slide && (
           <AnimatePresence mode="wait">
             <motion.div
@@ -68,9 +68,10 @@ const Index = () => {
         )}
         
         {/* Dark overlays for high-end cinematic feel and readability */}
-        <div className="absolute inset-0 bg-black/30 z-10 transition-colors duration-1000"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent z-10"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f]/80 via-transparent to-[#0a0a0f]/80 z-10"></div>
+        <div className="absolute inset-0 bg-black/40 z-10 transition-colors duration-1000"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-gold/20 via-transparent to-blue-500/10 mix-blend-overlay z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f]/90 via-transparent to-[#0a0a0f]/90 z-10"></div>
 
         <div className="container relative z-20 text-left mt-10">
           <AnimatePresence mode="wait">
@@ -83,15 +84,16 @@ const Index = () => {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="max-w-3xl"
               >
-                <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold text-white tracking-widest leading-tight mb-4">
+                <p className="font-script text-gold text-4xl md:text-5xl mb-2 -rotate-1 drop-shadow-md">Premium Experience</p>
+                <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gold via-yellow-100 to-gold tracking-widest leading-tight mb-4 drop-shadow-[0_0_15px_rgba(194,155,103,0.3)]">
                   {slide.title}
                 </h1>
-                <p className="text-lg md:text-xl text-white/80 font-light tracking-wide mb-10 max-w-xl leading-relaxed">
+                <p className="text-lg md:text-xl text-white/90 font-light tracking-wide mb-10 max-w-xl leading-relaxed">
                   {slide.subtitle}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-6 items-start">
                   <Link to="/salons">
-                    <Button size="lg" className="bg-transparent border border-white text-white hover:bg-white hover:text-black rounded-none px-12 py-7 text-sm font-bold uppercase tracking-widest transition-all">
+                    <Button size="lg" className="bg-transparent border-2 border-gold text-white hover:bg-gold hover:text-black rounded-none px-12 py-7 text-sm font-bold uppercase tracking-widest transition-all">
                       {slide.buttonText}
                     </Button>
                   </Link>
@@ -107,7 +109,7 @@ const Index = () => {
                  <button
                    key={idx}
                    onClick={() => setCurrentSlide(idx)}
-                   className={`h-1 transition-all duration-500 rounded-full ${idx === currentSlide ? 'w-10 bg-gold' : 'w-4 bg-white/30 hover:bg-white/50'}`}
+                   className={`h-1.5 transition-all duration-500 rounded-none ${idx === currentSlide ? 'w-12 bg-gold shadow-[0_0_10px_rgba(194,155,103,0.8)]' : 'w-6 bg-white/30 hover:bg-gold/50'}`}
                  />
                ))}
              </div>
@@ -116,13 +118,15 @@ const Index = () => {
       </section>
 
       {/* Services */}
-      <section className="py-24 bg-white">
+      <section className="py-28 bg-white">
         <div className="container max-w-6xl">
-          <div className="text-center mb-20 space-y-4">
-             <h2 className="font-display text-3xl md:text-4xl font-bold uppercase tracking-widest text-black">What We Do</h2>
-             <p className="text-black/60 font-light tracking-wide max-w-2xl mx-auto">We offer a full range of luxurious hair and beauty services tailored exactly to your needs.</p>
+          <div className="text-center mb-20 space-y-2">
+             <p className="font-script text-gold text-4xl md:text-5xl mb-2 -rotate-2">Experience the Best</p>
+             <h2 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter text-black">What We Do</h2>
+             <div className="w-24 h-1 bg-gold mx-auto mt-6 mb-4"></div>
+             <p className="text-black/60 font-light tracking-wide max-w-2xl mx-auto text-lg mt-4">We offer a full range of luxurious hair and beauty services tailored exactly to your needs.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { title: "CUT & STYLE", desc: "Precision cuts and elegant styling for any occasion." },
               { title: "COLOUR", desc: "From subtle balayage to complete color transformations." },
@@ -134,13 +138,13 @@ const Index = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15, duration: 0.6 }}
-                className="group cursor-pointer border border-black/5 hover:border-gold/30 transition-all p-12 bg-white text-center hover:shadow-[0_10px_40px_rgba(0,0,0,0.03)]"
+                className="group cursor-pointer border-t-4 border-black hover:border-gold transition-all p-12 bg-gray-50 text-center hover:bg-black rounded-none"
               >
-                <div className="w-16 h-16 bg-gold/5 flex items-center justify-center mx-auto mb-8 text-gold group-hover:scale-110 transition-transform duration-500">
+                <div className="w-16 h-16 bg-gold/10 group-hover:bg-gold/20 flex items-center justify-center mx-auto mb-8 text-gold group-hover:scale-110 transition-transform duration-500 rounded-none">
                   <Sparkles className="h-6 w-6" />
                 </div>
-                <h3 className="font-display font-bold text-lg mb-4 tracking-widest uppercase text-black">{step.title}</h3>
-                <p className="text-black/60 font-light leading-relaxed text-sm tracking-wide">{step.desc}</p>
+                <h3 className="font-display font-black text-xl mb-4 tracking-tighter uppercase text-black group-hover:text-white transition-colors">{step.title}</h3>
+                <p className="text-black/60 group-hover:text-white/70 font-light leading-relaxed text-sm tracking-wide transition-colors">{step.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -148,11 +152,14 @@ const Index = () => {
       </section>
 
       {/* Featured Salons */}
-      <section className="py-24 bg-[#FDFDFD] border-t border-black/5">
+      <section className="py-28 bg-black neon-edge-glow text-white">
         <div className="container max-w-7xl">
-          <div className="flex flex-col md:flex-row items-baseline justify-between mb-16 border-b border-black/10 pb-6">
-            <h2 className="font-display text-2xl md:text-3xl font-bold uppercase tracking-widest">Featured Salons</h2>
-            <Link to="/salons" className="text-xs font-bold tracking-widest uppercase text-black/40 hover:text-gold transition-colors mt-4 md:mt-0">
+          <div className="flex flex-col md:flex-row items-baseline justify-between mb-16 border-b border-white/10 pb-6">
+            <div>
+              <p className="font-script text-gold text-3xl md:text-4xl mb-1 -rotate-2">Discover Our</p>
+              <h2 className="font-display text-3xl md:text-5xl font-black uppercase tracking-tighter">Featured Salons</h2>
+            </div>
+            <Link to="/salons" className="text-xs font-bold tracking-widest uppercase text-white/50 hover:text-gold transition-colors mt-6 md:mt-0">
               View All Locations →
             </Link>
           </div>
@@ -175,14 +182,16 @@ const Index = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-32 bg-black text-white px-6">
-        <div className="container text-center space-y-8 max-w-3xl">
-          <h2 className="font-display text-4xl md:text-5xl font-bold uppercase tracking-widest">Own a Salon?</h2>
-          <p className="text-white/60 font-light tracking-wide text-lg mt-4 max-w-xl mx-auto">Join GlamBook and reach more customers. Set up your luxury profile in minutes and start accepting bookings online.</p>
-          <div className="pt-8">
+      <section className="py-32 bg-white text-black px-6">
+        <div className="container text-center space-y-6 max-w-3xl">
+          <p className="font-script text-gold text-4xl md:text-5xl mb-2">Partner With Us</p>
+          <h2 className="font-display text-4xl md:text-6xl font-black uppercase tracking-tighter">Own a Salon?</h2>
+          <div className="w-24 h-1 bg-gold mx-auto my-6"></div>
+          <p className="text-black/60 font-light tracking-wide text-lg max-w-xl mx-auto">Join GlamBook and reach more customers. Set up your luxury profile in minutes and start accepting bookings online.</p>
+          <div className="pt-10">
             <Link to="/pricing">
-               <Button className="bg-gold hover:bg-gold/90 text-white rounded-none px-12 py-7 text-sm font-bold uppercase tracking-widest transition-all">
-                  Partner With Us
+               <Button className="bg-black hover:bg-gold text-white rounded-none px-12 py-7 text-sm font-bold uppercase tracking-widest transition-all">
+                  Get Started
                </Button>
             </Link>
           </div>

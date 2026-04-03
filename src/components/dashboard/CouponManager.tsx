@@ -6,6 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Edit2, Trash2, Tag, Percent, Copy } from "lucide-react";
@@ -34,6 +44,7 @@ const CouponManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ code: "", type: "percentage" as "percentage" | "flat", value: "", minOrder: "", usageLimit: "", expiryDate: "" });
+  const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
 
   const resetForm = () => {
     setForm({ code: "", type: "percentage", value: "", minOrder: "", usageLimit: "", expiryDate: "" });
@@ -73,6 +84,7 @@ const CouponManager = () => {
 
   const handleDelete = (id: string) => {
     setCoupons(prev => prev.filter(c => c.id !== id));
+    setCouponToDelete(null);
     toast.success("Coupon deleted");
   };
 
@@ -182,7 +194,7 @@ const CouponManager = () => {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Edit2 className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setCouponToDelete(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -191,6 +203,23 @@ const CouponManager = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!couponToDelete} onOpenChange={(open) => !open && setCouponToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the coupon.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => couponToDelete && handleDelete(couponToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

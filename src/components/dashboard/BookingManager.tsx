@@ -4,6 +4,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CalendarCheck, CheckCircle, XCircle, Clock, RefreshCw, Eye } from "lucide-react";
@@ -30,10 +40,10 @@ const initialBookings: Booking[] = [
 ];
 
 const statusColors: Record<string, string> = {
-  confirmed: "default",
-  pending: "secondary",
-  cancelled: "destructive",
-  completed: "outline",
+  confirmed: "bg-green-600 hover:bg-green-700 text-white border-0",
+  pending: "bg-yellow-500 hover:bg-yellow-600 text-white border-0",
+  cancelled: "bg-red-500 hover:bg-red-600 text-white border-0",
+  completed: "bg-slate-500 hover:bg-slate-600 text-white border-0",
 };
 
 const BookingManager = () => {
@@ -43,11 +53,13 @@ const BookingManager = () => {
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
+  const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
 
   const filtered = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
 
   const updateStatus = (id: string, status: Booking["status"]) => {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+    if (status === "cancelled") setBookingToCancel(null);
     toast.success(`Booking ${status}`);
   };
 
@@ -90,7 +102,7 @@ const BookingManager = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-medium text-sm">{booking.customer}</h3>
-                    <Badge variant={statusColors[booking.status] as any}>{booking.status}</Badge>
+                    <Badge className={`${statusColors[booking.status]} capitalize`}>{booking.status}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{booking.service}</p>
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -109,7 +121,7 @@ const BookingManager = () => {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => updateStatus(booking.id, "confirmed")} title="Confirm">
                         <CheckCircle className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateStatus(booking.id, "cancelled")} title="Cancel">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setBookingToCancel(booking.id)} title="Cancel">
                         <XCircle className="h-3.5 w-3.5" />
                       </Button>
                     </>
@@ -122,7 +134,7 @@ const BookingManager = () => {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={() => updateStatus(booking.id, "completed")} title="Mark complete">
                         <CheckCircle className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateStatus(booking.id, "cancelled")} title="Cancel">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setBookingToCancel(booking.id)} title="Cancel">
                         <XCircle className="h-3.5 w-3.5" />
                       </Button>
                     </>
@@ -150,7 +162,7 @@ const BookingManager = () => {
                 <div><span className="text-muted-foreground">Customer:</span><p className="font-medium">{selectedBooking.customer}</p></div>
                 <div><span className="text-muted-foreground">Phone:</span><p className="font-medium">{selectedBooking.phone}</p></div>
                 <div><span className="text-muted-foreground">Service:</span><p className="font-medium">{selectedBooking.service}</p></div>
-                <div><span className="text-muted-foreground">Status:</span><p><Badge variant={statusColors[selectedBooking.status] as any}>{selectedBooking.status}</Badge></p></div>
+                <div><span className="text-muted-foreground">Status:</span><p><Badge className={`${statusColors[selectedBooking.status]} capitalize`}>{selectedBooking.status}</Badge></p></div>
                 <div><span className="text-muted-foreground">Date:</span><p className="font-medium">{selectedBooking.date}</p></div>
                 <div><span className="text-muted-foreground">Time:</span><p className="font-medium">{selectedBooking.time}</p></div>
               </div>
@@ -189,6 +201,23 @@ const BookingManager = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!bookingToCancel} onOpenChange={(open) => !open && setBookingToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will cancel the booking and notify the customer. Do you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+            <AlertDialogAction onClick={() => bookingToCancel && updateStatus(bookingToCancel, "cancelled")} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Yes, Cancel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

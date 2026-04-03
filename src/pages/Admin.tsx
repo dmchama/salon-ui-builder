@@ -137,7 +137,7 @@ const AccountManager = () => {
                 <TableCell><div className="font-medium">{o.name}</div><div className="text-xs text-muted-foreground">{o.email}</div></TableCell>
                 <TableCell>{o.salon}</TableCell>
                 <TableCell><Badge variant="secondary">{o.plan}</Badge></TableCell>
-                <TableCell><Badge variant={o.status === "active" ? "default" : o.status === "suspended" ? "destructive" : "secondary"}>{o.status}</Badge></TableCell>
+                <TableCell><Badge className={`${o.status === "active" ? "bg-green-600 hover:bg-green-700" : o.status === "pending" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : o.status === "suspended" ? "bg-red-500 hover:bg-red-600" : ""} text-white border-0 capitalize`}>{o.status}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{o.joined}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
@@ -159,19 +159,19 @@ const SystemStats = () => (
     <h2 className="font-display text-lg font-semibold">System Statistics</h2>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {[
-        { label: "Total Salons", value: "156", icon: Store, change: "+12 this month", color: "text-primary" },
-        { label: "Total Users", value: "1,248", icon: Users, change: "+85 this month", color: "text-accent" },
-        { label: "Revenue", value: "Rs. 4,52,000", icon: DollarSign, change: "+22% vs last month", color: "text-primary" },
-        { label: "Active Bookings", value: "342", icon: TrendingUp, change: "+18% this week", color: "text-accent" },
+        { label: "Total Salons", value: "156", icon: Store, change: "+12 this month", color: "text-blue-600 dark:text-blue-400", borderClass: "" },
+        { label: "Total Users", value: "1,248", icon: Users, change: "+85 this month", color: "text-green-600 dark:text-green-400", borderClass: "" },
+        { label: "Revenue", value: "Rs. 4,52,000", icon: DollarSign, change: "+22% vs last month", color: "text-red-500 dark:text-red-400", borderClass: "" },
+        { label: "Active Bookings", value: "342", icon: TrendingUp, change: "+18% this week", color: "text-yellow-600 dark:text-yellow-400", borderClass: "border border-yellow-400/80 dark:border-yellow-500/80 shadow-sm" },
       ].map(s => (
-        <Card key={s.label}>
+        <Card key={s.label} className={s.borderClass}>
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">{s.label}</span>
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">{s.label}</span>
               <s.icon className={`h-4 w-4 ${s.color}`} />
             </div>
-            <div className="text-2xl font-bold font-display">{s.value}</div>
-            <p className="text-xs text-muted-foreground mt-1">{s.change}</p>
+            <div className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</div>
+            <p className="text-xs text-muted-foreground mt-1 tracking-wide">{s.change}</p>
           </CardContent>
         </Card>
       ))}
@@ -215,7 +215,7 @@ const SalonModeration = () => (
             <TableRow key={s.id}>
               <TableCell className="font-medium">{s.name} {s.flagged && <AlertTriangle className="inline h-3 w-3 text-destructive ml-1" />}</TableCell>
               <TableCell>{s.owner}</TableCell>
-              <TableCell><Badge variant={s.status === "approved" ? "default" : s.status === "pending" ? "secondary" : "destructive"}>{s.status}</Badge></TableCell>
+              <TableCell><Badge className={`${s.status === "approved" ? "bg-green-600 hover:bg-green-700" : s.status === "pending" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : "bg-red-500 hover:bg-red-600"} text-white border-0 capitalize`}>{s.status}</Badge></TableCell>
               <TableCell>{s.reports}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">
@@ -548,7 +548,7 @@ const Admin = () => {
   const [tab, setTab] = useState("stats");
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-[#FDFDFD]">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background text-foreground transition-colors">
       <div className="bg-black text-white px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">
@@ -569,21 +569,30 @@ const Admin = () => {
       </div>
 
       <div className="container py-12 max-w-7xl">
-        <h1 className="font-display text-4xl font-bold mb-12 uppercase tracking-widest text-black">Admin Console</h1>
+        <h1 className="font-display text-4xl font-bold mb-8 uppercase tracking-widest text-foreground">Admin Dashboard</h1>
+
+        <div className="flex flex-wrap gap-3 mb-10">
+          <Button onClick={() => setTab("accounts")} className="bg-blue-600 hover:bg-blue-700 text-white tracking-widest uppercase text-xs h-9">Manage Shops</Button>
+          <Button onClick={() => setTab("moderation")} className="bg-yellow-500 hover:bg-yellow-600 text-white tracking-widest uppercase text-xs h-9 gap-2 shadow-sm rounded-none">
+            Review Requests <Badge className="bg-black/20 text-white border-0 hover:bg-black/30 px-1.5 py-0 h-5">1</Badge>
+          </Button>
+          <Button onClick={() => setTab("plans")} className="bg-cyan-500 hover:bg-cyan-600 text-white tracking-widest uppercase text-xs shadow-sm h-9">Subscription Plans</Button>
+          <Button onClick={() => setTab("accounts")} className="bg-slate-600 hover:bg-slate-700 text-white tracking-widest uppercase text-xs shadow-sm h-9">Manage Shop Types</Button>
+        </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex flex-wrap h-auto gap-8 bg-transparent border-b border-black/10 rounded-none w-full justify-start p-0 mb-8 overflow-x-auto">
-            <TabsTrigger value="stats" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><BarChart3 className="h-3.5 w-3.5" /> Statistics</TabsTrigger>
-            <TabsTrigger value="plans" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><CreditCard className="h-3.5 w-3.5" /> Plans</TabsTrigger>
-            <TabsTrigger value="accounts" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Users className="h-3.5 w-3.5" /> Accounts</TabsTrigger>
-            <TabsTrigger value="moderation" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Shield className="h-3.5 w-3.5" /> Moderation</TabsTrigger>
-            <TabsTrigger value="website" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Globe className="h-3.5 w-3.5" /> Website</TabsTrigger>
-            <TabsTrigger value="promotions" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
-            <TabsTrigger value="coupons" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
-            <TabsTrigger value="sms" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-black text-black/40 border-transparent hover:text-black/70 shadow-none whitespace-nowrap gap-2"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
+          <TabsList className="flex flex-wrap h-auto gap-8 bg-transparent border-b border-border rounded-none w-full justify-start p-0 mb-8 overflow-x-auto">
+            <TabsTrigger value="stats" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><BarChart3 className="h-3.5 w-3.5" /> Statistics</TabsTrigger>
+            <TabsTrigger value="plans" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><CreditCard className="h-3.5 w-3.5" /> Plans</TabsTrigger>
+            <TabsTrigger value="accounts" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Users className="h-3.5 w-3.5" /> Accounts</TabsTrigger>
+            <TabsTrigger value="moderation" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Shield className="h-3.5 w-3.5" /> Moderation</TabsTrigger>
+            <TabsTrigger value="website" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Globe className="h-3.5 w-3.5" /> Website</TabsTrigger>
+            <TabsTrigger value="promotions" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
+            <TabsTrigger value="coupons" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
+            <TabsTrigger value="sms" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
           </TabsList>
 
-          <div className="bg-white border border-black/5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-8 min-h-[500px]">
+          <div className="bg-card border border-border shadow-sm p-8 min-h-[500px] rounded-sm">
             <TabsContent value="stats" className="mt-0 outline-none"><SystemStats /></TabsContent>
             <TabsContent value="plans" className="mt-0 outline-none"><SubscriptionManager /></TabsContent>
             <TabsContent value="accounts" className="mt-0 outline-none"><AccountManager /></TabsContent>

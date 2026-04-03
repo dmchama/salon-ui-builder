@@ -71,8 +71,8 @@ const Booking = () => {
             <CheckCircle className="h-20 w-20 text-gold mx-auto" />
           </motion.div>
           <div className="space-y-4">
-            <h1 className="font-display text-4xl font-bold uppercase tracking-widest text-black">Booking Confirmed</h1>
-            <p className="text-black/60 font-light tracking-wide text-lg">Your appointment at <strong className="font-bold text-black">{salon.name}</strong> has been secured.</p>
+            <h1 className="font-display text-4xl font-bold uppercase tracking-widest text-black">Booking Pending</h1>
+            <p className="text-black/60 font-light tracking-wide text-lg">Your appointment request at <strong className="font-bold text-black">{salon.name}</strong> has been submitted and is pending confirmation.</p>
           </div>
           
           <div className="border border-black/10 p-8 text-left max-w-md mx-auto space-y-4">
@@ -114,7 +114,7 @@ const Booking = () => {
                 <SelectContent className="rounded-none border-black/10">
                   {salon.services.map(s => (
                     <SelectItem key={s.id} value={s.id} className="uppercase tracking-widest text-xs py-3">
-                      {s.name} — Rs. {s.price.toLocaleString()}
+                      {s.name} {s.price ? `— Rs. ${s.price.toLocaleString()}` : '— Price Varies'}
                     </SelectItem>
                   ))}
                 </SelectContent>

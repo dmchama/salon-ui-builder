@@ -26,23 +26,23 @@ const SalonCard = ({ id, name, image, location, rating, services, priceRange, is
       </div>
       <div className="space-y-3 px-1">
         <div className="flex items-start justify-between">
-          <h3 className="font-display font-bold text-lg uppercase tracking-widest text-black group-hover:text-gold transition-colors">{name}</h3>
+          <h3 className="font-display font-bold text-lg uppercase tracking-widest text-current group-hover:text-gold transition-colors">{name}</h3>
           <div className="flex items-center gap-1 text-gold">
             <Star className="h-4 w-4 fill-current" />
             <span className="text-sm font-bold">{rating}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-black/60">
+        <div className="flex items-center gap-2 opacity-70">
           <MapPin className="h-4 w-4" />
           <span className="text-sm font-light uppercase tracking-wider">{location}</span>
         </div>
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-black/5 mt-3">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-current/10 mt-3">
           {services.slice(0, 3).map((s) => (
-            <span key={s} className="text-[10px] font-bold uppercase tracking-widest text-black/40">{s}</span>
+            <span key={s} className="text-[10px] font-bold uppercase tracking-widest opacity-50">{s}</span>
           ))}
         </div>
         <div className="flex items-center justify-between pt-1">
-          <span className="text-sm font-bold text-black/80">{priceRange}</span>
+          <span className="text-sm font-bold opacity-90">{priceRange}</span>
           <div className="flex items-center gap-1 text-gold">
             <span className="text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4">Book Now</span>
           </div>

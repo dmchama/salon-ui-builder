@@ -5,10 +5,20 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, Edit2, Trash2, UserCheck, Phone, Mail } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +30,7 @@ interface Technician {
   specialization: string;
   experience: string;
   active: boolean;
+  image?: string;
 }
 
 const initialTechnicians: Technician[] = [
@@ -34,10 +45,11 @@ const TechnicianManager = () => {
   const [technicians, setTechnicians] = useState<Technician[]>(initialTechnicians);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", specialization: "", experience: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", specialization: "", experience: "", image: "" });
+  const [technicianToDelete, setTechnicianToDelete] = useState<string | null>(null);
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", specialization: "", experience: "" });
+    setForm({ name: "", phone: "", email: "", specialization: "", experience: "", image: "" });
     setEditingId(null);
   };
 
@@ -58,13 +70,14 @@ const TechnicianManager = () => {
   };
 
   const handleEdit = (tech: Technician) => {
-    setForm({ name: tech.name, phone: tech.phone, email: tech.email, specialization: tech.specialization, experience: tech.experience });
+    setForm({ name: tech.name, phone: tech.phone, email: tech.email, specialization: tech.specialization, experience: tech.experience, image: tech.image || "" });
     setEditingId(tech.id);
     setDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
     setTechnicians(prev => prev.filter(t => t.id !== id));
+    setTechnicianToDelete(null);
     toast.success("Technician removed");
   };
 
@@ -117,6 +130,15 @@ const TechnicianManager = () => {
                   <Input value={form.experience} onChange={e => setForm(f => ({ ...f, experience: e.target.value }))} placeholder="e.g. 3 years" />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>Technician Image (Optional)</Label>
+                <Input type="file" accept="image/*" onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setForm(f => ({ ...f, image: URL.createObjectURL(e.target.files![0]) }));
+                  }
+                }} className="text-xs" />
+                {form.image && <img src={form.image} alt="Preview" className="h-16 w-16 object-cover border border-black/10 mt-2 rounded-full" />}
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
                 <Button onClick={handleSave}>{editingId ? "Update" : "Add"} Technician</Button>
@@ -145,6 +167,7 @@ const TechnicianManager = () => {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
+                        {tech.image && <AvatarImage src={tech.image} alt={tech.name} className="object-cover" />}
                         <AvatarFallback className="bg-primary/10 text-primary text-xs">
                           {tech.name.split(" ").map(n => n[0]).join("")}
                         </AvatarFallback>
@@ -166,7 +189,7 @@ const TechnicianManager = () => {
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(tech)}><Edit2 className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(tech.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setTechnicianToDelete(tech.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -175,6 +198,23 @@ const TechnicianManager = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!technicianToDelete} onOpenChange={(open) => !open && setTechnicianToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the technician from your team.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => technicianToDelete && handleDelete(technicianToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

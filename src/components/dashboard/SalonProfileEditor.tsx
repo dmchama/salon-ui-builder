@@ -5,6 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MapPin, Phone, Mail, Clock, ImagePlus, Save, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +45,7 @@ const SalonProfileEditor = () => {
     "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300&h=200&fit=crop",
     "https://images.unsplash.com/photo-1600948836101-f9ffda59d250?w=300&h=200&fit=crop",
   ]);
+  const [imageToDelete, setImageToDelete] = useState<number | null>(null);
 
   const handleProfileChange = (field: string, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
@@ -50,6 +61,7 @@ const SalonProfileEditor = () => {
 
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    setImageToDelete(null);
   };
 
   const handleSave = () => {
@@ -110,7 +122,7 @@ const SalonProfileEditor = () => {
               <div key={i} className="relative group rounded-lg overflow-hidden aspect-video">
                 <img src={img} alt={`Salon ${i + 1}`} className="w-full h-full object-cover" />
                 <button
-                  onClick={() => removeImage(i)}
+                  onClick={() => setImageToDelete(i)}
                   className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="h-3 w-3" />
@@ -174,6 +186,23 @@ const SalonProfileEditor = () => {
           <Save className="h-4 w-4" /> Save Profile
         </Button>
       </div>
+
+      <AlertDialog open={imageToDelete !== null} onOpenChange={(open) => !open && setImageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this image from the gallery?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => imageToDelete !== null && removeImage(imageToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

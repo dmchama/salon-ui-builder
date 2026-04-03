@@ -76,11 +76,11 @@ const SalonDetail = () => {
                         )}
                         <div>
                           <h4 className="font-display font-bold text-lg uppercase tracking-widest text-black mb-1">{service.name}</h4>
-                          <p className="text-sm text-black/50 font-light tracking-wide">{service.description} · <span className="text-black/70 font-medium">{service.duration}</span></p>
+                          <p className="text-sm text-black/50 font-light tracking-wide">{service.description}{service.duration ? ` · ` : ""}<span className="text-black/70 font-medium">{service.duration || ""}</span></p>
                         </div>
                       </div>
                       <div className="text-left sm:text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center">
-                        <span className="font-bold text-lg mb-0 sm:mb-2 tracking-widest">Rs. {service.price.toLocaleString()}</span>
+                        <span className="font-bold text-lg mb-0 sm:mb-2 tracking-widest">{service.price ? `Rs. ${service.price.toLocaleString()}` : 'Price Varies'}</span>
                         <Link to={`/booking/${salon.id}?service=${service.id}`}>
                           <Button size="sm" className="bg-transparent border border-black text-black hover:bg-black hover:text-white rounded-none uppercase tracking-widest text-xs px-6">Book</Button>
                         </Link>
