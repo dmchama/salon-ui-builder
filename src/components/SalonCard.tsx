@@ -3,7 +3,7 @@ import { MapPin, Star, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface SalonCardProps {
-  id: string;
+  slug: string;
   name: string;
   image: string;
   location: string;
@@ -13,8 +13,8 @@ interface SalonCardProps {
   isOpen: boolean;
 }
 
-const SalonCard = ({ id, name, image, location, rating, services, priceRange, isOpen }: SalonCardProps) => (
-  <Link to={`/salon/${id}`} className="group block">
+const SalonCard = ({ slug, name, image, location, rating, services, priceRange, isOpen }: SalonCardProps) => (
+  <Link to={`/salon/${slug}`} className="group block">
     <div className="bg-transparent transition-all duration-300">
       <div className="relative h-64 overflow-hidden mb-4">
         <img src={image} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out" />

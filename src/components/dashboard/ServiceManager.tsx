@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -17,167 +18,319 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Clock, DollarSign, Scissors } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, DollarSign, Scissors, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  createManagedService,
+  fetchManagedServices,
+  updateManagedService,
+  type ManageService,
+} from "@/api/services-api";
+import { ApiError } from "@/api/http";
 
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price?: number;
-  duration?: number;
-  category: string;
-  isActive: boolean;
-  image?: string;
+function rupeesToCents(rupees: number) {
+  return Math.round(rupees * 100);
 }
 
-const initialServices: Service[] = [
-  { id: "s1", name: "Haircut & Styling", description: "Professional haircut with wash, blow-dry, and styling.", price: 1500, duration: 45, category: "Hair", isActive: true },
-  { id: "s2", name: "Hair Coloring", description: "Full hair coloring with premium color products.", price: 5000, duration: 120, category: "Hair", isActive: true },
-  { id: "s3", name: "Keratin Treatment", description: "Smoothing keratin treatment for frizz-free hair.", price: 8000, duration: 180, category: "Hair", isActive: true },
-  { id: "s4", name: "Bridal Makeup", description: "Complete bridal makeup package with trial session.", price: 15000, duration: 150, category: "Bridal", isActive: true },
-  { id: "s5", name: "Facial Treatment", description: "Deep cleansing facial with premium skincare products.", price: 3500, duration: 60, category: "Skin", isActive: false },
-];
+function centsToRupees(cents: number) {
+  return cents / 100;
+}
 
-const emptyService: Omit<Service, "id"> = {
-  name: "", description: "", price: undefined, duration: undefined, category: "Hair", isActive: true, image: "",
+type FormState = {
+  name: string;
+  description: string;
+  priceRupees: string;
+  durationMin: string;
+  active: boolean;
 };
 
-const ServiceForm = ({ service, onChange }: { service: Omit<Service, "id"> | Service; onChange: (field: string, value: any) => void }) => (
+const emptyForm: FormState = {
+  name: "",
+  description: "",
+  priceRupees: "",
+  durationMin: "",
+  active: true,
+};
+
+function serviceToForm(s: ManageService): FormState {
+  return {
+    name: s.name,
+    description: s.description ?? "",
+    priceRupees: String(centsToRupees(s.priceCents)),
+    durationMin: String(s.durationMin),
+    active: s.active,
+  };
+}
+
+const ServiceForm = ({
+  form,
+  onChange,
+  showActive = false,
+}: {
+  form: FormState;
+  onChange: (field: keyof FormState, value: string | boolean) => void;
+  showActive?: boolean;
+}) => (
   <div className="space-y-4">
     <div className="space-y-2">
-      <Label>Service Name</Label>
-      <Input value={service.name} onChange={e => onChange("name", e.target.value)} placeholder="e.g., Haircut & Styling" />
+      <Label>Service name</Label>
+      <Input
+        className="rounded-none"
+        value={form.name}
+        onChange={(e) => onChange("name", e.target.value)}
+        placeholder="e.g. Haircut & styling"
+      />
     </div>
     <div className="space-y-2">
       <Label>Description</Label>
-      <Textarea value={service.description} onChange={e => onChange("description", e.target.value)} rows={4} className="resize-y min-h-[100px]" placeholder="Detailed description of the service..." />
+      <Textarea
+        className="rounded-none resize-y min-h-[100px]"
+        value={form.description}
+        onChange={(e) => onChange("description", e.target.value)}
+        placeholder="What clients should expect…"
+        rows={4}
+      />
     </div>
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
-        <Label className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Price (Rs.) <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-        <Input type="number" value={service.price === undefined ? "" : service.price} onChange={e => onChange("price", e.target.value === "" ? undefined : Number(e.target.value))} placeholder="Leave empty for 'Varies'" />
+        <Label className="flex items-center gap-1">
+          <DollarSign className="h-3.5 w-3.5" /> Price (Rs.)
+        </Label>
+        <Input
+          type="number"
+          min={0}
+          step={1}
+          className="rounded-none"
+          value={form.priceRupees}
+          onChange={(e) => onChange("priceRupees", e.target.value)}
+          placeholder="0"
+        />
       </div>
       <div className="space-y-2">
-        <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Duration (mins) <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-        <Input type="number" value={service.duration === undefined ? "" : service.duration} onChange={e => onChange("duration", e.target.value === "" ? undefined : Number(e.target.value))} placeholder="Leave empty for 'Varies'" />
+        <Label className="flex items-center gap-1">
+          <Clock className="h-3.5 w-3.5" /> Duration (minutes)
+        </Label>
+        <Input
+          type="number"
+          min={5}
+          className="rounded-none"
+          value={form.durationMin}
+          onChange={(e) => onChange("durationMin", e.target.value)}
+          placeholder="45"
+        />
       </div>
     </div>
-    <div className="space-y-2">
-      <Label>Category</Label>
-      <Input value={service.category} onChange={e => onChange("category", e.target.value)} placeholder="e.g., Hair, Skin, Bridal" />
-    </div>
-    <div className="space-y-2">
-      <Label>Service Image (Optional)</Label>
-      <Input type="file" accept="image/*" onChange={(e) => {
-        if (e.target.files && e.target.files.length > 0) {
-          onChange("image", URL.createObjectURL(e.target.files[0]));
-        }
-      }} className="text-xs" />
-      {service.image && <img src={service.image} alt="Preview" className="h-16 w-16 object-cover border border-black/10 mt-2" />}
-    </div>
+    {showActive && (
+      <div className="flex items-center gap-2">
+        <Switch checked={form.active} onCheckedChange={(v) => onChange("active", v)} id="svc-active" />
+        <Label htmlFor="svc-active">Active (visible on public booking page)</Label>
+      </div>
+    )}
   </div>
 );
 
-const ServiceManager = () => {
-  const [services, setServices] = useState<Service[]>(initialServices);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [newService, setNewService] = useState(emptyService);
+type Props = { salonId: string | null };
+
+const ServiceManager = ({ salonId }: Props) => {
+  const queryClient = useQueryClient();
+  const [editingService, setEditingService] = useState<ManageService | null>(null);
+  const [newForm, setNewForm] = useState<FormState>(emptyForm);
+  const [editForm, setEditForm] = useState<FormState>(emptyForm);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+  const [serviceToDeactivate, setServiceToDeactivate] = useState<ManageService | null>(null);
 
-  const handleAdd = () => {
-    if (!newService.name) {
-      toast.error("Please fill in the service name");
-      return;
-    }
-    const service: Service = { ...newService, id: `s${Date.now()}` };
-    setServices(prev => [...prev, service]);
-    setNewService(emptyService);
-    setIsAddOpen(false);
-    toast.success("Service added successfully!");
+  const { data: services = [], isLoading } = useQuery({
+    queryKey: ["managed-services", salonId],
+    queryFn: () => fetchManagedServices(salonId!),
+    enabled: Boolean(salonId),
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["managed-services", salonId] });
+    queryClient.invalidateQueries({ queryKey: ["owner-dashboard"] });
   };
 
-  const handleEdit = () => {
-    if (!editingService) return;
-    setServices(prev => prev.map(s => s.id === editingService.id ? editingService : s));
-    setIsEditOpen(false);
-    toast.success("Service updated!");
+  const createMut = useMutation({
+    mutationFn: () => {
+      if (!salonId) throw new Error("No salon");
+      const duration = Number(newForm.durationMin);
+      const price = Number(newForm.priceRupees);
+      if (!newForm.name.trim()) throw new Error("Name required");
+      if (!Number.isFinite(duration) || duration < 5) throw new Error("Duration must be at least 5 minutes");
+      if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
+      return createManagedService({
+        salonId,
+        name: newForm.name.trim(),
+        description: newForm.description.trim() || undefined,
+        durationMin: duration,
+        priceCents: rupeesToCents(price),
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      setNewForm(emptyForm);
+      setIsAddOpen(false);
+      toast.success("Service created");
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed");
+    },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: () => {
+      if (!editingService) throw new Error("None");
+      const duration = Number(editForm.durationMin);
+      const price = Number(editForm.priceRupees);
+      if (!editForm.name.trim()) throw new Error("Name required");
+      if (!Number.isFinite(duration) || duration < 5) throw new Error("Duration must be at least 5 minutes");
+      if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
+      return updateManagedService(editingService.id, {
+        name: editForm.name.trim(),
+        description: editForm.description.trim() || undefined,
+        durationMin: duration,
+        priceCents: rupeesToCents(price),
+        active: editForm.active,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      setIsEditOpen(false);
+      setEditingService(null);
+      toast.success("Service updated");
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed");
+    },
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: (s: ManageService) => updateManagedService(s.id, { active: !s.active }),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Service updated");
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof ApiError ? err.message : "Failed");
+    },
+  });
+
+  const deactivateMut = useMutation({
+    mutationFn: (s: ManageService) => updateManagedService(s.id, { active: false }),
+    onSuccess: () => {
+      invalidate();
+      setServiceToDeactivate(null);
+      toast.success("Service deactivated (hidden from public booking)");
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof ApiError ? err.message : "Failed");
+    },
+  });
+
+  const openEdit = (s: ManageService) => {
+    setEditingService(s);
+    setEditForm(serviceToForm(s));
+    setIsEditOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setServices(prev => prev.filter(s => s.id !== id));
-    setServiceToDelete(null);
-    toast.success("Service removed");
-  };
+  if (!salonId) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-12 tracking-wide">
+        Select a salon above to manage services.
+      </p>
+    );
+  }
 
-  const toggleActive = (id: string) => {
-    setServices(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-muted-foreground py-8">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading services…
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{services.filter(s => s.isActive).length} active services</p>
+        <p className="text-sm text-muted-foreground">
+          {services.filter((s) => s.active).length} active · {services.length} total
+        </p>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Service</Button>
+            <Button size="sm" className="gap-1 rounded-none">
+              <Plus className="h-4 w-4" /> Add service
+            </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="rounded-none">
             <DialogHeader>
-              <DialogTitle className="font-display">Add New Service</DialogTitle>
+              <DialogTitle className="font-display">New service</DialogTitle>
             </DialogHeader>
-            <ServiceForm service={newService} onChange={(f, v) => setNewService(prev => ({ ...prev, [f]: v }))} />
+            <ServiceForm
+              form={newForm}
+              showActive={false}
+              onChange={(f, v) => setNewForm((prev) => ({ ...prev, [f]: v }))}
+            />
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-              <Button onClick={handleAdd}>Add Service</Button>
+              <Button variant="outline" className="rounded-none" onClick={() => setIsAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="rounded-none" onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+                Save
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="space-y-3">
-        {services.map(service => (
-          <Card key={service.id} className={!service.isActive ? "opacity-60" : ""}>
+        {services.map((service) => (
+          <Card key={service.id} className={!service.active ? "opacity-60" : ""}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex gap-4">
-                    {service.image ? (
-                      <div className="w-16 h-16 shrink-0 border border-black/5 bg-black/5">
-                        <img src={service.image} alt={service.name} className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="w-16 h-16 shrink-0 border border-black/5 bg-black/5 flex items-center justify-center">
-                         <Scissors className="h-5 w-5 text-black/20" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-sm">{service.name}</h3>
-                        <Badge variant="secondary" className="text-xs">{service.category}</Badge>
-                        {!service.isActive && <Badge variant="outline" className="text-xs">Inactive</Badge>}
-                      </div>
+                <div className="flex gap-4 flex-1 min-w-0">
+                  <div className="w-16 h-16 shrink-0 border border-black/5 bg-black/5 flex items-center justify-center">
+                    <Scissors className="h-5 w-5 text-black/20" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-medium text-sm">{service.name}</h3>
+                      {!service.active && (
+                        <Badge variant="outline" className="text-xs rounded-none">
+                          Inactive
+                        </Badge>
+                      )}
+                    </div>
+                    {service.description && (
                       <p className="text-xs text-muted-foreground mb-2">{service.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">{service.price ? `Rs. ${service.price.toLocaleString()}` : 'Price Varies'}</span>
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {service.duration ? `${service.duration} mins` : 'Duration Varies'}</span>
-                      </div>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        Rs. {centsToRupees(service.priceCents).toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {service.durationMin} mins
+                      </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Switch checked={service.isActive} onCheckedChange={() => toggleActive(service.id)} />
+                  <Switch
+                    checked={service.active}
+                    onCheckedChange={() => toggleMut.mutate(service)}
+                    disabled={toggleMut.isPending}
+                  />
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(service)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
-                    onClick={() => { setEditingService(service); setIsEditOpen(true); }}
+                    className="h-8 w-8 text-destructive"
+                    onClick={() => setServiceToDeactivate(service)}
+                    title="Deactivate"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setServiceToDelete(service.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -187,35 +340,52 @@ const ServiceManager = () => {
         ))}
       </div>
 
-      <AlertDialog open={!!serviceToDelete} onOpenChange={(open) => !open && setServiceToDelete(null)}>
-        <AlertDialogContent>
+      {services.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground py-8">No services yet. Add one to accept bookings.</p>
+      )}
+
+      <AlertDialog
+        open={!!serviceToDeactivate}
+        onOpenChange={(open) => !open && setServiceToDeactivate(null)}
+      >
+        <AlertDialogContent className="rounded-none">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Deactivate service?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the service from your list.
+              It will disappear from the public booking page. Existing bookings are unchanged.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => serviceToDelete && handleDelete(serviceToDelete)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogCancel className="rounded-none">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => serviceToDeactivate && deactivateMut.mutate(serviceToDeactivate)}
+            >
+              Deactivate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-none">
           <DialogHeader>
-            <DialogTitle className="font-display">Edit Service</DialogTitle>
+            <DialogTitle className="font-display">Edit service</DialogTitle>
           </DialogHeader>
           {editingService && (
-            <ServiceForm service={editingService} onChange={(f, v) => setEditingService(prev => prev ? { ...prev, [f]: v } : null)} />
+            <ServiceForm
+              form={editForm}
+              showActive
+              onChange={(f, v) => setEditForm((prev) => ({ ...prev, [f]: v }))}
+            />
           )}
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleEdit}>Save Changes</Button>
+            <Button variant="outline" className="rounded-none" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="rounded-none" onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
+              Save
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

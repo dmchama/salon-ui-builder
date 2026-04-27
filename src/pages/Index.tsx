@@ -1,16 +1,34 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalonCard from "@/components/SalonCard";
-import { salons, initialHeroSlides, HeroSlide } from "@/data/mockSalons";
+import { initialHeroSlides, HeroSlide } from "@/data/mockSalons";
+import { fetchPublishedSalons } from "@/api/search-api";
+
+const FEATURED_COVER =
+  "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop";
+
+function listLocation(city: string | null, country: string | null, address: string | null): string {
+  const parts = [city, country].filter(Boolean);
+  if (parts.length) return parts.join(", ");
+  if (address?.trim()) return address.trim();
+  return "Location on profile";
+}
 
 const Index = () => {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const { data: publishedSalons = [] } = useQuery({
+    queryKey: ["public-salons", "featured"],
+    queryFn: () => fetchPublishedSalons(),
+  });
+  const featuredSalons = publishedSalons.slice(0, 4);
 
   useEffect(() => {
     const stored = localStorage.getItem("heroSlides");
@@ -164,17 +182,17 @@ const Index = () => {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {salons.map((salon) => (
+            {featuredSalons.map((salon) => (
               <SalonCard
                 key={salon.id}
-                id={salon.id}
+                slug={salon.slug}
                 name={salon.name}
-                image={salon.image}
-                location={salon.location}
-                rating={salon.rating}
-                services={salon.services.map(s => s.category).filter((v, i, a) => a.indexOf(v) === i)}
-                priceRange={salon.priceRange}
-                isOpen={salon.isOpen}
+                image={FEATURED_COVER}
+                location={listLocation(salon.city, salon.country, salon.address)}
+                rating={5}
+                services={["Browse profile"]}
+                priceRange="View pricing"
+                isOpen
               />
             ))}
           </div>

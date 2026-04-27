@@ -14,8 +14,9 @@ import {
   Scissors, LogOut, CreditCard, Users, BarChart3, Shield, Globe, Megaphone, Ticket, MessageSquare,
   Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
 import { motion } from "framer-motion";
 import { initialHeroSlides, HeroSlide } from "@/data/mockSalons";
 
@@ -545,7 +546,22 @@ const SmsManager = () => {
 // ─── Main Admin Page ───
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("stats");
+
+  useEffect(() => {
+    const token = getAccessToken();
+    const user = getStoredUser();
+    if (!token || !user) {
+      toast.info("Sign in as super admin.");
+      navigate("/login", { replace: true });
+      return;
+    }
+    if (user.role !== "SUPER_ADMIN") {
+      toast.error("Super admin access only.");
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background text-foreground transition-colors">
@@ -557,7 +573,7 @@ const Admin = () => {
           </div>
           <div className="flex items-center gap-6">
             <Link to="/dashboard">
-              <span className="text-xs uppercase tracking-widest text-white/50 hover:text-white transition-colors">Owner Portal</span>
+              <span className="text-xs uppercase tracking-widest text-white/50 hover:text-white transition-colors">Salon admin</span>
             </Link>
             <Link to="/">
               <span className="text-xs uppercase tracking-widest text-white/50 hover:text-white transition-colors flex items-center gap-2">
