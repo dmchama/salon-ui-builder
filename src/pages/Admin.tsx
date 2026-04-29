@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,36 +12,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Scissors, LogOut, CreditCard, Users, BarChart3, Shield, Globe, Megaphone, Ticket, MessageSquare,
-  Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle
+  LogOut, CreditCard, Users, BarChart3, Shield, Globe, Megaphone, Ticket, MessageSquare,
+  Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle, Loader2,
+  CalendarCheck, Building2, RefreshCw,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
 import { motion } from "framer-motion";
 import { initialHeroSlides, HeroSlide } from "@/data/mockSalons";
+import {
+  fetchAdminStats, AdminStats,
+  SalonOwnerDto, fetchOwners, approveOwner, suspendOwner, activateOwner,
+  AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
+} from "@/api/admin-api";
+import {
+  AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
+  fetchAdminPlans, createPlan, updatePlan, deletePlan,
+} from "@/api/plans-api";
 
 // ─── Mock Data ───
-const mockPlans = [
-  { id: 1, name: "Starter", price: 0, period: "Free", features: 3, subscribers: 42, active: true },
-  { id: 2, name: "Professional", price: 2500, period: "/month", features: 6, subscribers: 128, active: true },
-  { id: 3, name: "Enterprise", price: 5000, period: "/month", features: 8, subscribers: 31, active: true },
-];
 
-const mockOwners = [
-  { id: 1, name: "Priya Sharma", email: "priya@salon.com", salon: "Glamour Studio", plan: "Professional", status: "active", joined: "2025-11-10" },
-  { id: 2, name: "Rahul Verma", email: "rahul@barber.com", salon: "Royal Cuts", plan: "Enterprise", status: "active", joined: "2025-12-05" },
-  { id: 3, name: "Anita Singh", email: "anita@beauty.com", salon: "Beauty Bliss", plan: "Starter", status: "suspended", joined: "2026-01-15" },
-  { id: 4, name: "Vikram Patel", email: "vikram@style.com", salon: "Style Hub", plan: "Professional", status: "active", joined: "2026-02-20" },
-  { id: 5, name: "Meera Das", email: "meera@glow.com", salon: "Glow Up Salon", plan: "Starter", status: "pending", joined: "2026-03-10" },
-];
-
-const mockSalonsModeration = [
-  { id: 1, name: "Glamour Studio", owner: "Priya Sharma", status: "approved", flagged: false, reports: 0 },
-  { id: 2, name: "Royal Cuts", owner: "Rahul Verma", status: "approved", flagged: false, reports: 1 },
-  { id: 3, name: "New Look Salon", owner: "Ajay Kumar", status: "pending", flagged: true, reports: 3 },
-  { id: 4, name: "Beauty Bliss", owner: "Anita Singh", status: "suspended", flagged: true, reports: 5 },
-];
 
 const mockCoupons = [
   { id: 1, code: "WELCOME20", discount: "20%", type: "percentage", usage: 145, limit: 500, expires: "2026-06-30", active: true },
@@ -62,176 +54,894 @@ const mockSmsHistory = [
 
 // ─── Sub-Components ───
 
+type PlanFormState = {
+  name: string;
+  description: string;
+  priceRs: string;
+  intervalMonths: string;
+  features: string;
+  active: boolean;
+};
+
+const emptyForm = (): PlanFormState => ({
+  name: "", description: "", priceRs: "", intervalMonths: "1", features: "", active: true,
+});
+
+const planToForm = (p: AdminPlanDto): PlanFormState => ({
+  name: p.name,
+  description: p.description ?? "",
+  priceRs: (p.priceCents / 100).toString(),
+  intervalMonths: p.intervalMonths.toString(),
+  features: (p.features ?? []).join("\n"),
+  active: p.active,
+});
+
+const PlanForm = ({
+  form, onChange,
+}: {
+  form: PlanFormState;
+  onChange: (f: PlanFormState) => void;
+}) => (
+  <div className="space-y-4 pt-2">
+    <div>
+      <Label>Plan Name</Label>
+      <Input value={form.name} onChange={e => onChange({ ...form, name: e.target.value })} placeholder="e.g. Professional" />
+    </div>
+    <div>
+      <Label>Description</Label>
+      <Input value={form.description} onChange={e => onChange({ ...form, description: e.target.value })} placeholder="Optional short description" />
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <Label>Price (Rs.)</Label>
+        <Input type="number" min="0" value={form.priceRs} onChange={e => onChange({ ...form, priceRs: e.target.value })} placeholder="0 for free" />
+      </div>
+      <div>
+        <Label>Billing Interval</Label>
+        <Select value={form.intervalMonths} onValueChange={v => onChange({ ...form, intervalMonths: v })}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">Monthly</SelectItem>
+            <SelectItem value="3">Every 3 months</SelectItem>
+            <SelectItem value="6">Every 6 months</SelectItem>
+            <SelectItem value="12">Yearly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+    <div>
+      <Label>Features (one per line)</Label>
+      <Textarea rows={4} value={form.features} onChange={e => onChange({ ...form, features: e.target.value })} placeholder={"Unlimited bookings\nCustom branding\nPriority support"} />
+    </div>
+  </div>
+);
+
 const SubscriptionManager = () => {
-  const [editOpen, setEditOpen] = useState(false);
+  const qc = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editPlan, setEditPlan] = useState<AdminPlanDto | null>(null);
+  const [deletePlanTarget, setDeletePlanTarget] = useState<AdminPlanDto | null>(null);
+  const [createForm, setCreateForm] = useState<PlanFormState>(emptyForm());
+  const [editForm, setEditForm] = useState<PlanFormState>(emptyForm());
+
+  const { data: plans = [], isLoading, isError, refetch, isFetching } = useQuery<AdminPlanDto[]>({
+    queryKey: ["admin-plans"],
+    queryFn: fetchAdminPlans,
+    staleTime: 30_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-plans"] });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: CreatePlanPayload) => createPlan(payload),
+    onSuccess: () => { toast.success("Plan created"); setCreateOpen(false); setCreateForm(emptyForm()); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdatePlanPayload }) => updatePlan(id, payload),
+    onSuccess: () => { toast.success("Plan updated"); setEditPlan(null); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deletePlan(id),
+    onSuccess: () => { toast.success("Plan deleted"); setDeletePlanTarget(null); invalidate(); },
+    onError: (e: Error) => { toast.error(e.message); setDeletePlanTarget(null); },
+  });
+
+  const buildPayload = (form: PlanFormState): CreatePlanPayload => ({
+    name: form.name.trim(),
+    description: form.description.trim() || undefined,
+    priceCents: Math.round(parseFloat(form.priceRs || "0") * 100),
+    intervalMonths: parseInt(form.intervalMonths, 10),
+    features: form.features.split("\n").map(f => f.trim()).filter(Boolean),
+  });
+
+  const handleCreate = () => {
+    if (!createForm.name.trim()) { toast.error("Plan name is required"); return; }
+    createMutation.mutate(buildPayload(createForm));
+  };
+
+  const handleUpdate = () => {
+    if (!editPlan || !editForm.name.trim()) { toast.error("Plan name is required"); return; }
+    updateMutation.mutate({ id: editPlan.id, payload: { ...buildPayload(editForm), active: editForm.active } });
+  };
+
+  const intervalLabel = (months: number) => {
+    if (months === 1) return "/month";
+    if (months === 12) return "/year";
+    return `/${months}mo`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Subscription Plans</h2>
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Plan</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Subscription Plan</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div><Label>Plan Name</Label><Input placeholder="e.g. Premium" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Price (Rs.)</Label><Input type="number" placeholder="0" /></div>
-                <div><Label>Billing Period</Label>
-                  <Select><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent><SelectItem value="month">Monthly</SelectItem><SelectItem value="year">Yearly</SelectItem><SelectItem value="free">Free</SelectItem></SelectContent>
-                  </Select>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs uppercase tracking-widest">
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+          <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (!o) setCreateForm(emptyForm()); }}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Plan</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Subscription Plan</DialogTitle></DialogHeader>
+              <PlanForm form={createForm} onChange={setCreateForm} />
+              <Button
+                className="w-full mt-2"
+                onClick={handleCreate}
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create Plan
+              </Button>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="uppercase tracking-widest text-sm">Loading plans…</span>
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <p className="text-muted-foreground tracking-wide text-sm">Failed to load plans.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Retry
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {plans.map(p => (
+            <Card key={p.id} className={!p.active ? "opacity-60" : ""}>
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-display font-semibold text-lg">{p.name}</span>
+                  <Badge variant={p.active ? "default" : "secondary"}>{p.active ? "Active" : "Inactive"}</Badge>
                 </div>
-              </div>
-              <div><Label>Features (one per line)</Label><Textarea rows={4} placeholder="Feature 1&#10;Feature 2" /></div>
-              <Button className="w-full" onClick={() => { toast.success("Plan created"); setEditOpen(false); }}>Create Plan</Button>
+                <div className="text-2xl font-bold font-display">
+                  {p.priceCents === 0 ? "Free" : `Rs. ${(p.priceCents / 100).toLocaleString("en-LK")}`}
+                  <span className="text-sm text-muted-foreground font-normal">
+                    {p.priceCents > 0 ? intervalLabel(p.intervalMonths) : ""}
+                  </span>
+                </div>
+                {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
+                <p className="text-sm text-muted-foreground">
+                  {(p.features ?? []).length} feature{(p.features ?? []).length !== 1 ? "s" : ""} · {p.subscriberCount} subscriber{p.subscriberCount !== 1 ? "s" : ""}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline" size="sm" className="flex-1 gap-1"
+                    onClick={() => { setEditPlan(p); setEditForm(planToForm(p)); }}
+                  >
+                    <Edit className="h-3 w-3" /> Edit
+                  </Button>
+                  <Button
+                    variant="outline" size="sm" className="gap-1 text-destructive hover:bg-destructive/10"
+                    onClick={() => setDeletePlanTarget(p)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {plans.length === 0 && (
+            <div className="col-span-3 py-16 text-center text-muted-foreground text-sm tracking-wide">
+              No plans yet. Click "Add Plan" to create one.
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {mockPlans.map(p => (
-          <Card key={p.id}>
-            <CardContent className="p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-display font-semibold text-lg">{p.name}</span>
-                <Badge variant={p.active ? "default" : "secondary"}>{p.active ? "Active" : "Inactive"}</Badge>
-              </div>
-              <div className="text-2xl font-bold font-display">{p.price === 0 ? "Free" : `Rs. ${p.price.toLocaleString()}`}<span className="text-sm text-muted-foreground font-normal">{p.period !== "Free" ? p.period : ""}</span></div>
-              <p className="text-sm text-muted-foreground">{p.features} features · {p.subscribers} subscribers</p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 gap-1"><Edit className="h-3 w-3" /> Edit</Button>
-                <Button variant="outline" size="sm" className="gap-1 text-destructive"><Trash2 className="h-3 w-3" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editPlan} onOpenChange={o => { if (!o) setEditPlan(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Plan — {editPlan?.name}</DialogTitle></DialogHeader>
+          <PlanForm form={editForm} onChange={setEditForm} />
+          <div className="flex items-center gap-3 pt-2">
+            <Switch
+              id="plan-active"
+              checked={editForm.active}
+              onCheckedChange={v => setEditForm(f => ({ ...f, active: v }))}
+            />
+            <Label htmlFor="plan-active">{editForm.active ? "Active" : "Inactive"}</Label>
+          </div>
+          <Button
+            className="w-full mt-2"
+            onClick={handleUpdate}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Save Changes
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deletePlanTarget} onOpenChange={o => { if (!o) setDeletePlanTarget(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Plan</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground pt-2">
+            Are you sure you want to delete <strong>{deletePlanTarget?.name}</strong>?
+            {(deletePlanTarget?.subscriberCount ?? 0) > 0 && (
+              <span className="block mt-2 text-destructive font-medium">
+                This plan has {deletePlanTarget?.subscriberCount} active subscriber{deletePlanTarget?.subscriberCount !== 1 ? "s" : ""} and cannot be deleted. Deactivate it instead.
+              </span>
+            )}
+          </p>
+          <div className="flex gap-3 mt-4">
+            <Button variant="outline" className="flex-1" onClick={() => setDeletePlanTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive" className="flex-1"
+              disabled={deleteMutation.isPending || (deletePlanTarget?.subscriberCount ?? 0) > 0}
+              onClick={() => deletePlanTarget && deleteMutation.mutate(deletePlanTarget.id)}
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  active: "bg-green-600 hover:bg-green-700 text-white",
+  suspended: "bg-red-500 hover:bg-red-600 text-white",
+  pending: "bg-yellow-500 hover:bg-yellow-600 text-black",
+};
+
 const AccountManager = () => {
+  const qc = useQueryClient();
   const [filter, setFilter] = useState("all");
-  const filtered = filter === "all" ? mockOwners : mockOwners.filter(o => o.status === filter);
+
+  const { data: owners = [], isLoading, isError, refetch, isFetching } = useQuery<SalonOwnerDto[]>({
+    queryKey: ["admin-owners"],
+    queryFn: fetchOwners,
+    staleTime: 30_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-owners"] });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => approveOwner(id),
+    onSuccess: (_d, id) => {
+      toast.success(`${owners.find(o => o.id === id)?.displayName ?? "Owner"} approved`);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: (id: string) => suspendOwner(id),
+    onSuccess: (_d, id) => {
+      toast.info(`${owners.find(o => o.id === id)?.displayName ?? "Owner"} suspended`);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => activateOwner(id),
+    onSuccess: (_d, id) => {
+      toast.success(`${owners.find(o => o.id === id)?.displayName ?? "Owner"} activated`);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const anyPending = approveMutation.isPending || suspendMutation.isPending || activateMutation.isPending;
+  const filtered = filter === "all" ? owners : owners.filter(o => o.status === filter);
+  const counts = {
+    all: owners.length,
+    active: owners.filter(o => o.status === "active").length,
+    suspended: owners.filter(o => o.status === "suspended").length,
+    pending: owners.filter(o => o.status === "pending").length,
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="font-display text-lg font-semibold">Salon Owner Accounts</h2>
-        <div className="flex gap-2">
-          {["all", "active", "suspended", "pending"].map(s => (
-            <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)} className="capitalize">{s}</Button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs uppercase tracking-widest">
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+          <div className="flex gap-2 flex-wrap">
+            {(["all", "active", "pending", "suspended"] as const).map(s => (
+              <Button
+                key={s}
+                variant={filter === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(s)}
+                className={`capitalize gap-1.5 ${s === "pending" && counts.pending > 0 ? "border-yellow-400" : ""}`}
+              >
+                {s}
+                {counts[s] > 0 && (
+                  <span className={`text-[10px] font-bold px-1 rounded-full ${filter === s ? "bg-white/20" : s === "pending" && counts.pending > 0 ? "bg-yellow-400 text-black" : "opacity-60"}`}>
+                    {counts[s]}
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Owner</TableHead><TableHead>Salon</TableHead><TableHead>Plan</TableHead><TableHead>Status</TableHead><TableHead>Joined</TableHead><TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map(o => (
-              <TableRow key={o.id}>
-                <TableCell><div className="font-medium">{o.name}</div><div className="text-xs text-muted-foreground">{o.email}</div></TableCell>
-                <TableCell>{o.salon}</TableCell>
-                <TableCell><Badge variant="secondary">{o.plan}</Badge></TableCell>
-                <TableCell><Badge className={`${o.status === "active" ? "bg-green-600 hover:bg-green-700" : o.status === "pending" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : o.status === "suspended" ? "bg-red-500 hover:bg-red-600" : ""} text-white border-0 capitalize`}>{o.status}</Badge></TableCell>
-                <TableCell className="text-sm text-muted-foreground">{o.joined}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                    {o.status === "active" ? <Button variant="ghost" size="sm" onClick={() => toast.info(`${o.name} suspended`)}><Ban className="h-4 w-4 text-destructive" /></Button> : <Button variant="ghost" size="sm" onClick={() => toast.success(`${o.name} activated`)}><CheckCircle className="h-4 w-4 text-primary" /></Button>}
-                  </div>
-                </TableCell>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="uppercase tracking-widest text-sm">Loading accounts…</span>
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <p className="text-muted-foreground text-sm tracking-wide">Failed to load accounts.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Retry
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Owner</TableHead>
+                <TableHead>Salons</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-12 text-sm tracking-wide">
+                    No accounts found.
+                  </TableCell>
+                </TableRow>
+              )}
+              {filtered.map(o => (
+                <TableRow key={o.id} className={o.status === "suspended" ? "opacity-60" : ""}>
+                  <TableCell>
+                    <div className="font-medium">{o.displayName}</div>
+                    <div className="text-xs text-muted-foreground">{o.email}</div>
+                    {o.phone && <div className="text-xs text-muted-foreground">{o.phone}</div>}
+                  </TableCell>
+                  <TableCell>
+                    {o.salons.length === 0
+                      ? <span className="text-xs text-muted-foreground">No salons yet</span>
+                      : o.salons.map(s => (
+                        <div key={s.id} className="text-sm leading-5">
+                          {s.name}
+                          <span className={`ml-1.5 text-[10px] uppercase tracking-widest font-semibold ${s.status === "PUBLISHED" ? "text-green-600" : s.status === "SUSPENDED" ? "text-red-500" : "text-muted-foreground"}`}>
+                            {s.status}
+                          </span>
+                        </div>
+                      ))
+                    }
+                  </TableCell>
+                  <TableCell>
+                    {o.subscription
+                      ? <Badge variant="secondary">{o.subscription.planName}</Badge>
+                      : <span className="text-xs text-muted-foreground">No plan</span>
+                    }
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`${STATUS_COLORS[o.status] ?? ""} border-0 capitalize`}>
+                      {o.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(o.joinedAt).toLocaleDateString("en-LK", { year: "numeric", month: "short", day: "numeric" })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {/* PENDING → Approve or Suspend */}
+                      {o.status === "pending" && (
+                        <>
+                          <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => approveMutation.mutate(o.id)} title="Approve account" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+                            {approveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => suspendMutation.mutate(o.id)} title="Reject / suspend" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                            {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                          </Button>
+                        </>
+                      )}
+                      {/* ACTIVE → Suspend only */}
+                      {o.status === "active" && (
+                        <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => suspendMutation.mutate(o.id)} title="Suspend account" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                          {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                        </Button>
+                      )}
+                      {/* SUSPENDED → Activate only */}
+                      {o.status === "suspended" && (
+                        <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => activateMutation.mutate(o.id)} title="Reactivate account" className="text-primary hover:text-primary hover:bg-primary/10">
+                          {activateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 };
 
-const SystemStats = () => (
-  <div className="space-y-6">
-    <h2 className="font-display text-lg font-semibold">System Statistics</h2>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {[
-        { label: "Total Salons", value: "156", icon: Store, change: "+12 this month", color: "text-blue-600 dark:text-blue-400", borderClass: "" },
-        { label: "Total Users", value: "1,248", icon: Users, change: "+85 this month", color: "text-green-600 dark:text-green-400", borderClass: "" },
-        { label: "Revenue", value: "Rs. 4,52,000", icon: DollarSign, change: "+22% vs last month", color: "text-red-500 dark:text-red-400", borderClass: "" },
-        { label: "Active Bookings", value: "342", icon: TrendingUp, change: "+18% this week", color: "text-yellow-600 dark:text-yellow-400", borderClass: "border border-yellow-400/80 dark:border-yellow-500/80 shadow-sm" },
-      ].map(s => (
-        <Card key={s.label} className={s.borderClass}>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">{s.label}</span>
-              <s.icon className={`h-4 w-4 ${s.color}`} />
-            </div>
-            <div className={`text-2xl font-bold font-display ${s.color}`}>{s.value}</div>
-            <p className="text-xs text-muted-foreground mt-1 tracking-wide">{s.change}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card><CardHeader><CardTitle className="text-base">Plan Distribution</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {[{ plan: "Starter", count: 42, pct: 21 }, { plan: "Professional", count: 128, pct: 64 }, { plan: "Enterprise", count: 31, pct: 15 }].map(p => (
-            <div key={p.plan} className="space-y-1">
-              <div className="flex justify-between text-sm"><span>{p.plan}</span><span className="text-muted-foreground">{p.count} ({p.pct}%)</span></div>
-              <div className="h-2 bg-secondary rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${p.pct}%` }} /></div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Card><CardHeader><CardTitle className="text-base">Monthly Revenue Trend</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {[{ month: "Jan", rev: "Rs. 3,20,000" }, { month: "Feb", rev: "Rs. 3,70,000" }, { month: "Mar", rev: "Rs. 4,52,000" }].map(m => (
-            <div key={m.month} className="flex justify-between text-sm py-2 border-b last:border-0">
-              <span>{m.month} 2026</span><span className="font-semibold">{m.rev}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  </div>
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function fmtLkr(cents: number) {
+  return `Rs. ${(cents / 100).toLocaleString("en-LK")}`;
+}
+
+function pctChange(current: number, previous: number) {
+  if (previous === 0) return current > 0 ? "+100%" : "—";
+  const change = Math.round(((current - previous) / previous) * 100);
+  return `${change >= 0 ? "+" : ""}${change}% vs last month`;
+}
+
+const StatCard = ({
+  label, value, sub, icon: Icon, color, border,
+}: {
+  label: string; value: string; sub: string;
+  icon: React.ElementType; color: string; border?: string;
+}) => (
+  <Card className={border}>
+    <CardContent className="p-5">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">{label}</span>
+        <Icon className={`h-4 w-4 ${color}`} />
+      </div>
+      <div className={`text-2xl font-bold font-display ${color}`}>{value}</div>
+      <p className="text-xs text-muted-foreground mt-1 tracking-wide">{sub}</p>
+    </CardContent>
+  </Card>
 );
 
-const SalonModeration = () => (
-  <div className="space-y-4">
-    <h2 className="font-display text-lg font-semibold">Salon Profile Moderation</h2>
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Salon</TableHead><TableHead>Owner</TableHead><TableHead>Status</TableHead><TableHead>Reports</TableHead><TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {mockSalonsModeration.map(s => (
-            <TableRow key={s.id}>
-              <TableCell className="font-medium">{s.name} {s.flagged && <AlertTriangle className="inline h-3 w-3 text-destructive ml-1" />}</TableCell>
-              <TableCell>{s.owner}</TableCell>
-              <TableCell><Badge className={`${s.status === "approved" ? "bg-green-600 hover:bg-green-700" : s.status === "pending" ? "bg-yellow-500 hover:bg-yellow-600 text-black" : "bg-red-500 hover:bg-red-600"} text-white border-0 capitalize`}>{s.status}</Badge></TableCell>
-              <TableCell>{s.reports}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                  {s.status === "pending" && <Button variant="ghost" size="sm" onClick={() => toast.success(`${s.name} approved`)}><CheckCircle className="h-4 w-4 text-primary" /></Button>}
-                  {s.status !== "suspended" && <Button variant="ghost" size="sm" onClick={() => toast.info(`${s.name} suspended`)}><Ban className="h-4 w-4 text-destructive" /></Button>}
+const BookingStatusBadgeColor: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-800",
+  CONFIRMED: "bg-blue-100 text-blue-800",
+  COMPLETED: "bg-green-100 text-green-800",
+  CANCELLED: "bg-gray-100 text-gray-700",
+  NO_SHOW: "bg-red-100 text-red-700",
+};
+
+const SystemStats = () => {
+  const { data, isLoading, isError, refetch, isFetching } = useQuery<AdminStats>({
+    queryKey: ["admin-stats"],
+    queryFn: fetchAdminStats,
+    staleTime: 30_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="uppercase tracking-widest text-sm">Loading statistics…</span>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+        <AlertTriangle className="h-10 w-10 text-destructive" />
+        <p className="text-muted-foreground tracking-wide text-sm">Failed to load statistics.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const { overview, bookingsByStatus, planDistribution, monthlyRevenue, monthlyBookings } = data;
+
+  const totalBookingsChange = pctChange(overview.bookingsThisMonth, overview.bookingsLastMonth);
+  const revenueChange = pctChange(overview.revenueThisMonthCents, overview.revenueLastMonthCents);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold">System Statistics</h2>
+        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2 text-xs uppercase tracking-widest">
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+        </Button>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Salons"
+          value={overview.totalSalons.toLocaleString()}
+          sub={`+${overview.newSalonsThisMonth} this month · ${overview.publishedSalons} published`}
+          icon={Store}
+          color="text-blue-600 dark:text-blue-400"
+        />
+        <StatCard
+          label="Total Users"
+          value={overview.totalUsers.toLocaleString()}
+          sub={`+${overview.newUsersThisMonth} this month · ${overview.salonAdmins} owners`}
+          icon={Users}
+          color="text-green-600 dark:text-green-400"
+        />
+        <StatCard
+          label="Revenue (This Month)"
+          value={fmtLkr(overview.revenueThisMonthCents)}
+          sub={revenueChange}
+          icon={DollarSign}
+          color="text-rose-500 dark:text-rose-400"
+        />
+        <StatCard
+          label="Active Bookings"
+          value={overview.activeBookings.toLocaleString()}
+          sub={`${overview.bookingsThisMonth} this month · ${totalBookingsChange}`}
+          icon={CalendarCheck}
+          color="text-amber-600 dark:text-amber-400"
+          border="border border-amber-400/60 shadow-sm"
+        />
+      </div>
+
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-5 flex items-center gap-4">
+            <Building2 className="h-8 w-8 text-blue-400/70 shrink-0" />
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-1">Salon Status</div>
+              <div className="flex gap-3 text-sm">
+                <span className="text-green-600 font-semibold">{overview.publishedSalons} live</span>
+                <span className="text-muted-foreground">{overview.draftSalons} draft</span>
+                {overview.suspendedSalons > 0 && <span className="text-destructive">{overview.suspendedSalons} suspended</span>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5 flex items-center gap-4">
+            <CreditCard className="h-8 w-8 text-green-400/70 shrink-0" />
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-1">Active Subscriptions</div>
+              <div className="text-2xl font-bold font-display">{overview.activeSubscriptions}</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5 flex items-center gap-4">
+            <TrendingUp className="h-8 w-8 text-amber-400/70 shrink-0" />
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-1">Total Bookings</div>
+              <div className="text-2xl font-bold font-display">{overview.totalBookings.toLocaleString()}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Plan distribution */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Plan Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {planDistribution.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active subscriptions yet.</p>
+            ) : (
+              planDistribution.map((p) => (
+                <div key={p.name} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{p.name}</span>
+                    <span className="text-muted-foreground">{p.count} subscriber{p.count !== 1 ? "s" : ""} ({p.pct}%)</span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${p.pct}%` }} />
+                  </div>
                 </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
-  </div>
-);
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Booking status breakdown */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Booking Status Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {bookingsByStatus.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No bookings yet.</p>
+            ) : (
+              bookingsByStatus
+                .sort((a, b) => b.count - a.count)
+                .map((s) => (
+                  <div key={s.status} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                    <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded ${BookingStatusBadgeColor[s.status] ?? "bg-secondary"}`}>
+                      {s.status}
+                    </span>
+                    <span className="font-semibold text-sm">{s.count}</span>
+                  </div>
+                ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Monthly revenue trend */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Monthly Revenue (Last 6 Months)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {monthlyRevenue.map((m) => {
+              const maxRev = Math.max(...monthlyRevenue.map((x) => x.revenueCents), 1);
+              const pct = Math.round((m.revenueCents / maxRev) * 100);
+              return (
+                <div key={`${m.year}-${m.month}`} className="flex items-center gap-3 py-1.5 border-b last:border-0">
+                  <span className="text-xs text-muted-foreground w-16 shrink-0">
+                    {MONTH_NAMES[m.month - 1]} {m.year}
+                  </span>
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs font-semibold w-28 text-right shrink-0">
+                    {m.revenueCents > 0 ? fmtLkr(m.revenueCents) : <span className="text-muted-foreground">—</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Monthly booking trend */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Monthly Bookings (Last 6 Months)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {monthlyBookings.map((m) => {
+              const maxCount = Math.max(...monthlyBookings.map((x) => x.count), 1);
+              const pct = Math.round((m.count / maxCount) * 100);
+              return (
+                <div key={`${m.year}-${m.month}`} className="flex items-center gap-3 py-1.5 border-b last:border-0">
+                  <span className="text-xs text-muted-foreground w-16 shrink-0">
+                    {MONTH_NAMES[m.month - 1]} {m.year}
+                  </span>
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs font-semibold w-12 text-right shrink-0">
+                    {m.count > 0 ? m.count : <span className="text-muted-foreground">—</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const SALON_STATUS_META: Record<string, { label: string; badge: string }> = {
+  PUBLISHED: { label: "Published", badge: "bg-green-600 hover:bg-green-700 text-white" },
+  DRAFT:     { label: "Draft",     badge: "bg-yellow-500 hover:bg-yellow-600 text-black" },
+  SUSPENDED: { label: "Suspended", badge: "bg-red-500 hover:bg-red-600 text-white" },
+};
+
+const SalonModeration = () => {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState("ALL");
+
+  const { data: salons = [], isLoading, isError, refetch, isFetching } = useQuery<AdminSalonDto[]>({
+    queryKey: ["admin-salons"],
+    queryFn: fetchAdminSalons,
+    staleTime: 30_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-salons"] });
+
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => publishSalon(id),
+    onSuccess: (_d, id) => { toast.success(`"${salons.find(s => s.id === id)?.name}" published`); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const suspendMutation = useMutation({
+    mutationFn: (id: string) => suspendSalon(id),
+    onSuccess: (_d, id) => { toast.info(`"${salons.find(s => s.id === id)?.name}" suspended`); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const draftMutation = useMutation({
+    mutationFn: (id: string) => draftSalon(id),
+    onSuccess: (_d, id) => { toast.info(`"${salons.find(s => s.id === id)?.name}" moved to draft`); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const anyMutating = publishMutation.isPending || suspendMutation.isPending || draftMutation.isPending;
+
+  const counts = {
+    ALL: salons.length,
+    DRAFT: salons.filter(s => s.status === "DRAFT").length,
+    PUBLISHED: salons.filter(s => s.status === "PUBLISHED").length,
+    SUSPENDED: salons.filter(s => s.status === "SUSPENDED").length,
+  };
+
+  const filtered = filter === "ALL" ? salons : salons.filter(s => s.status === filter);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="font-display text-lg font-semibold">Salon Profile Moderation</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs uppercase tracking-widest">
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+          <div className="flex gap-2 flex-wrap">
+            {(["ALL", "DRAFT", "PUBLISHED", "SUSPENDED"] as const).map(s => (
+              <Button
+                key={s}
+                variant={filter === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(s)}
+                className={`capitalize gap-1.5 ${s === "DRAFT" && counts.DRAFT > 0 ? "border-yellow-400" : ""}`}
+              >
+                {s === "ALL" ? "All" : SALON_STATUS_META[s].label}
+                {counts[s] > 0 && (
+                  <span className={`text-[10px] font-bold px-1 rounded-full ${filter === s ? "bg-white/20" : s === "DRAFT" && counts.DRAFT > 0 ? "bg-yellow-400 text-black" : "opacity-60"}`}>
+                    {counts[s]}
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="uppercase tracking-widest text-sm">Loading salons…</span>
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <p className="text-muted-foreground text-sm tracking-wide">Failed to load salons.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Retry
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Salon</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Bookings</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Added</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12 text-sm tracking-wide">
+                    No salons found.
+                  </TableCell>
+                </TableRow>
+              )}
+              {filtered.map(s => {
+                const meta = SALON_STATUS_META[s.status];
+                return (
+                  <TableRow key={s.id} className={s.status === "SUSPENDED" ? "opacity-60" : ""}>
+                    <TableCell>
+                      <div className="font-medium">{s.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono">/{s.slug}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{s.owner.displayName}</div>
+                      <div className="text-xs text-muted-foreground">{s.owner.email}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {[s.city, s.country].filter(Boolean).join(", ") || "—"}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">{s.bookingCount}</TableCell>
+                    <TableCell>
+                      <Badge className={`${meta.badge} border-0`}>{meta.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(s.createdAt).toLocaleDateString("en-LK", { year: "numeric", month: "short", day: "numeric" })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {/* DRAFT → Publish or Suspend */}
+                        {s.status === "DRAFT" && (
+                          <>
+                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => publishMutation.mutate(s.id)} title="Publish salon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+                              {publishMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => suspendMutation.mutate(s.id)} title="Suspend salon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                              {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                            </Button>
+                          </>
+                        )}
+                        {/* PUBLISHED → Suspend only */}
+                        {s.status === "PUBLISHED" && (
+                          <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => suspendMutation.mutate(s.id)} title="Suspend salon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                            {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                          </Button>
+                        )}
+                        {/* SUSPENDED → Re-publish or move to Draft */}
+                        {s.status === "SUSPENDED" && (
+                          <>
+                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => publishMutation.mutate(s.id)} title="Re-publish salon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+                              {publishMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                            </Button>
+                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => draftMutation.mutate(s.id)} title="Move to draft" className="text-muted-foreground hover:text-foreground hover:bg-secondary">
+                              {draftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+};
 
 const WebsiteManager = () => {
   const [slides, setSlides] = useState<HeroSlide[]>([]);

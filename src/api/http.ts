@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/lib/auth-storage";
+import { getAccessToken, clearAuth } from "@/lib/auth-storage";
 
 export type ApiErrorBody = {
   statusCode: number;
@@ -45,6 +45,10 @@ export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Pr
   if (!res.ok) {
     const body = data as Partial<ApiErrorBody> | null;
     const message = body?.message ?? res.statusText;
+    if (res.status === 401 && !skipAuth) {
+      clearAuth();
+      window.location.href = "/login";
+    }
     throw new ApiError(message, res.status, body?.code);
   }
 
