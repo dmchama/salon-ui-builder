@@ -20,11 +20,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
 import { motion } from "framer-motion";
-import { initialHeroSlides, HeroSlide } from "@/data/mockSalons";
 import {
   fetchAdminStats, AdminStats,
   SalonOwnerDto, fetchOwners, approveOwner, suspendOwner, activateOwner,
   AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
+  WebsiteHeroSlide, WebsiteSettings,
+  fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
 } from "@/api/admin-api";
 import {
   AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
@@ -944,52 +945,99 @@ const SalonModeration = () => {
 };
 
 const WebsiteManager = () => {
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
-  const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const qc = useQueryClient();
+  const [editingSlide, setEditingSlide] = useState<WebsiteHeroSlide | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [footerText, setFooterText] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+
+  const { data: settings, isLoading, isError, refetch } = useQuery<WebsiteSettings>({
+    queryKey: ["admin-website"],
+    queryFn: fetchWebsiteSettings,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
-    const stored = localStorage.getItem("heroSlides");
-    if (stored) setSlides(JSON.parse(stored));
-    else setSlides(initialHeroSlides);
-  }, []);
+    if (!settings) return;
+    setFooterText(settings.footerText);
+    setSupportEmail(settings.supportEmail);
+    setMetaTitle(settings.metaTitle);
+    setMetaDescription(settings.metaDescription);
+  }, [settings]);
 
-  const saveSlides = (newSlides: HeroSlide[]) => {
-    setSlides(newSlides);
-    localStorage.setItem("heroSlides", JSON.stringify(newSlides));
-    toast.success("Hero slides updated successfully");
-  };
+  const slides = settings?.heroSlides ?? [];
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-website"] });
+
+  const slidesMutation = useMutation({
+    mutationFn: (s: WebsiteHeroSlide[]) => saveHeroSlides(s),
+    onSuccess: () => { toast.success("Hero slides saved"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const footerMutation = useMutation({
+    mutationFn: () => saveFooterSettings({ footerText, supportEmail }),
+    onSuccess: () => { toast.success("Footer settings saved"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const seoMutation = useMutation({
+    mutationFn: () => saveSeoSettings({ metaTitle, metaDescription }),
+    onSuccess: () => { toast.success("SEO settings saved"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const handleDelete = (id: string) => {
-    saveSlides(slides.filter(s => s.id !== id));
+    slidesMutation.mutate(slides.filter(s => s.id !== id));
   };
 
   const handleSaveSlide = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const mediaType = formData.get("mediaType") as "image" | "video";
-    
-    // Simulating file upload - in a real app this would upload to S3/Cloudinary
-    let mediaUrl = editingSlide?.mediaUrl || "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1920&q=80";
-    const file = formData.get("mediaFile") as File;
+    const fd = new FormData(e.currentTarget);
+    const mediaType = fd.get("mediaType") as "image" | "video";
+    let mediaUrl = editingSlide?.mediaUrl ?? "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1920&q=80";
+    const file = fd.get("mediaFile") as File;
     if (file && file.size > 0) {
-       mediaUrl = mediaType === 'video' 
-         ? "https://assets.mixkit.co/videos/preview/mixkit-working-with-the-hair-of-a-woman-in-a-hair-43486-large.mp4"
-         : "https://images.unsplash.com/photo-1600948836101-f9ffda59d250?w=1920&q=80";
+      mediaUrl = mediaType === "video"
+        ? "https://assets.mixkit.co/videos/preview/mixkit-working-with-the-hair-of-a-woman-in-a-hair-43486-large.mp4"
+        : "https://images.unsplash.com/photo-1600948836101-f9ffda59d250?w=1920&q=80";
     }
-
-    const newSlide: HeroSlide = {
-      id: editingSlide ? editingSlide.id : `slide-${Date.now()}`,
+    const updated: WebsiteHeroSlide = {
+      id: editingSlide?.id ?? `slide-${Date.now()}`,
       mediaType,
       mediaUrl,
-      title: formData.get("title") as string,
-      subtitle: formData.get("subtitle") as string,
-      buttonText: formData.get("buttonText") as string,
+      title: fd.get("title") as string,
+      subtitle: fd.get("subtitle") as string,
+      buttonText: fd.get("buttonText") as string,
     };
-
-    saveSlides(editingSlide ? slides.map(s => s.id === editingSlide.id ? newSlide : s) : [...slides, newSlide]);
+    const next = editingSlide
+      ? slides.map(s => s.id === editingSlide.id ? updated : s)
+      : [...slides, updated];
+    slidesMutation.mutate(next);
     setIsDialogOpen(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="uppercase tracking-widest text-sm">Loading website settings…</span>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+        <AlertTriangle className="h-10 w-10 text-destructive" />
+        <p className="text-muted-foreground text-sm tracking-wide">Failed to load website settings.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -1092,18 +1140,65 @@ const WebsiteManager = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-black/10">
-        <Card className="rounded-none border border-black/10 shadow-none"><CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">Footer Settings</CardTitle></CardHeader>
+        <Card className="rounded-none border border-black/10 shadow-none">
+          <CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">Footer Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Footer Text</Label><Input className="rounded-none border-black/20" defaultValue="© 2026 GlamBook. All rights reserved." /></div>
-            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Support Email</Label><Input className="rounded-none border-black/20" defaultValue="support@glambook.com" /></div>
-            <Button className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs" onClick={() => toast.success("Footer updated")}>Save Changes</Button>
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Footer Text</Label>
+              <Input
+                className="rounded-none border-black/20"
+                value={footerText}
+                onChange={e => setFooterText(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Support Email</Label>
+              <Input
+                className="rounded-none border-black/20"
+                type="email"
+                value={supportEmail}
+                onChange={e => setSupportEmail(e.target.value)}
+              />
+            </div>
+            <Button
+              className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs"
+              onClick={() => footerMutation.mutate()}
+              disabled={footerMutation.isPending}
+            >
+              {footerMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
           </CardContent>
         </Card>
-        <Card className="rounded-none border border-black/10 shadow-none"><CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">SEO Settings</CardTitle></CardHeader>
+
+        <Card className="rounded-none border border-black/10 shadow-none">
+          <CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">SEO Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Title</Label><Input className="rounded-none border-black/20" defaultValue="GlamBook - Luxury Salon Booking" /></div>
-            <div><Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Description</Label><Textarea rows={2} className="rounded-none border-black/20" defaultValue="Book premium salon services instantly." /></div>
-            <Button className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs" onClick={() => toast.success("SEO settings updated")}>Save Changes</Button>
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Title</Label>
+              <Input
+                className="rounded-none border-black/20"
+                value={metaTitle}
+                onChange={e => setMetaTitle(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Description</Label>
+              <Textarea
+                rows={2}
+                className="rounded-none border-black/20"
+                value={metaDescription}
+                onChange={e => setMetaDescription(e.target.value)}
+              />
+            </div>
+            <Button
+              className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs"
+              onClick={() => seoMutation.mutate()}
+              disabled={seoMutation.isPending}
+            >
+              {seoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
           </CardContent>
         </Card>
       </div>

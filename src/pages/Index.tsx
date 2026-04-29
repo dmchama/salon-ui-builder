@@ -7,8 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalonCard from "@/components/SalonCard";
-import { initialHeroSlides, HeroSlide } from "@/data/mockSalons";
+import { initialHeroSlides } from "@/data/mockSalons";
 import { fetchPublishedSalons } from "@/api/search-api";
+import { fetchPublicWebsiteSettings, WebsiteHeroSlide } from "@/api/admin-api";
 
 const FEATURED_COVER =
   "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop";
@@ -21,7 +22,6 @@ function listLocation(city: string | null, country: string | null, address: stri
 }
 
 const Index = () => {
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const { data: publishedSalons = [] } = useQuery({
@@ -30,15 +30,14 @@ const Index = () => {
   });
   const featuredSalons = publishedSalons.slice(0, 4);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("heroSlides");
-    if (stored) {
-      setSlides(JSON.parse(stored));
-    } else {
-      setSlides(initialHeroSlides);
-      localStorage.setItem("heroSlides", JSON.stringify(initialHeroSlides));
-    }
-  }, []);
+  const { data: websiteSettings } = useQuery({
+    queryKey: ["website-settings-public"],
+    queryFn: fetchPublicWebsiteSettings,
+    staleTime: 60_000,
+  });
+
+  const slides: WebsiteHeroSlide[] =
+    websiteSettings?.heroSlides?.length ? websiteSettings.heroSlides : initialHeroSlides;
 
   useEffect(() => {
     if (slides.length <= 1) return;

@@ -36,6 +36,45 @@ export async function fetchAdminStats(): Promise<AdminStats> {
   return apiRequest<AdminStats>("/admin/stats", { method: "GET" });
 }
 
+// ── Website Settings ──────────────────────────────────────────────────────
+
+export type WebsiteHeroSlide = {
+  id: string;
+  mediaType: "image" | "video";
+  mediaUrl: string;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+};
+
+export type WebsiteSettings = {
+  heroSlides: WebsiteHeroSlide[];
+  footerText: string;
+  supportEmail: string;
+  metaTitle: string;
+  metaDescription: string;
+};
+
+export async function fetchWebsiteSettings(): Promise<WebsiteSettings> {
+  return apiRequest<WebsiteSettings>("/admin/website", { method: "GET" });
+}
+
+export async function fetchPublicWebsiteSettings(): Promise<WebsiteSettings> {
+  return apiRequest<WebsiteSettings>("/website-settings", { method: "GET" });
+}
+
+export async function saveHeroSlides(slides: WebsiteHeroSlide[]): Promise<void> {
+  return apiRequest<void>("/admin/website/hero-slides", { method: "PATCH", body: JSON.stringify({ slides }) });
+}
+
+export async function saveFooterSettings(data: { footerText: string; supportEmail: string }): Promise<void> {
+  return apiRequest<void>("/admin/website/footer", { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export async function saveSeoSettings(data: { metaTitle: string; metaDescription: string }): Promise<void> {
+  return apiRequest<void>("/admin/website/seo", { method: "PATCH", body: JSON.stringify(data) });
+}
+
 export type OwnerSalon = { id: string; name: string; status: string };
 export type OwnerSubscription = { planName: string; subStatus: string; expiresAt: string };
 
