@@ -26,7 +26,10 @@ import {
   AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
   WebsiteHeroSlide, WebsiteSettings,
   fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
+  CampaignService,
+  fetchCampaignCustomers, fetchCampaignServices, sendSmsCampaign,
 } from "@/api/admin-api";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
   fetchAdminPlans, createPlan, updatePlan, deletePlan,
@@ -1206,39 +1209,82 @@ const WebsiteManager = () => {
   );
 };
 
-const PromotionManager = () => (
-  <div className="space-y-4">
-    <div className="flex items-center justify-between">
-      <h2 className="font-display text-lg font-semibold">Promotions</h2>
-      <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Promotion</Button>
-    </div>
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead><TableHead>Placement</TableHead><TableHead>Status</TableHead><TableHead>Duration</TableHead><TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {mockPromotions.map(p => (
-            <TableRow key={p.id}>
-              <TableCell className="font-medium">{p.title}</TableCell>
-              <TableCell>{p.placement}</TableCell>
-              <TableCell><Badge variant={p.status === "active" ? "default" : p.status === "scheduled" ? "secondary" : "outline"}>{p.status}</Badge></TableCell>
-              <TableCell className="text-sm text-muted-foreground">{p.startDate} → {p.endDate}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-1">
-                  <Button variant="ghost" size="sm"><Edit className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                </div>
-              </TableCell>
+const PromotionManager = () => {
+  const [addOpen, setAddOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [placement, setPlacement] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleCreate = () => {
+    if (!title || !placement || !startDate || !endDate) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    toast.success("Promotion created");
+    setTitle(""); setPlacement(""); setStartDate(""); setEndDate("");
+    setAddOpen(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold">Promotions</h2>
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Promotion</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Create Promotion</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div><Label>Title</Label><Input placeholder="e.g. Summer Sale Banner" value={title} onChange={e => setTitle(e.target.value)} /></div>
+              <div><Label>Placement</Label>
+                <Select value={placement} onValueChange={setPlacement}>
+                  <SelectTrigger><SelectValue placeholder="Select placement" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Homepage Hero">Homepage Hero</SelectItem>
+                    <SelectItem value="Homepage Banner">Homepage Banner</SelectItem>
+                    <SelectItem value="Salon Listing">Salon Listing</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Start Date</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                <div><Label>End Date</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+              </div>
+              <Button className="w-full" onClick={handleCreate}>Create Promotion</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead><TableHead>Placement</TableHead><TableHead>Status</TableHead><TableHead>Duration</TableHead><TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
-  </div>
-);
+          </TableHeader>
+          <TableBody>
+            {mockPromotions.map(p => (
+              <TableRow key={p.id}>
+                <TableCell className="font-medium">{p.title}</TableCell>
+                <TableCell>{p.placement}</TableCell>
+                <TableCell><Badge variant={p.status === "active" ? "default" : p.status === "scheduled" ? "secondary" : "outline"}>{p.status}</Badge></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{p.startDate} → {p.endDate}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="sm"><Edit className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+};
 
 const CouponManager = () => {
   const [addOpen, setAddOpen] = useState(false);
@@ -1299,30 +1345,221 @@ const CouponManager = () => {
   );
 };
 
+const SEGMENTS = [
+  { value: "all", label: "All Customers" },
+  { value: "regular", label: "Regular Customers (2+ bookings)" },
+  { value: "last3months", label: "Booked in Last 3 Months" },
+  { value: "last6months", label: "Booked in Last 6 Months" },
+  { value: "last12months", label: "Booked in Last 12 Months" },
+];
+
+function buildMessage(opts: {
+  discountPct: number;
+  discountScope: string;
+  selectedServices: CampaignService[];
+  validFrom: string;
+  validTo: string;
+  customLink: string;
+}): string {
+  const { discountPct, discountScope, selectedServices, validFrom, validTo, customLink } = opts;
+  if (!discountPct) return "";
+  let serviceDesc = "all services";
+  if (discountScope === "specific_service" && selectedServices.length === 1) {
+    serviceDesc = selectedServices[0].name;
+  } else if (discountScope === "multiple_services" && selectedServices.length > 0) {
+    serviceDesc = selectedServices.map((s) => s.name).join(", ");
+  }
+  const period = validFrom && validTo ? ` Valid ${validFrom} to ${validTo}.` : "";
+  const link = customLink ? ` Book: ${customLink}` : "";
+  return `Hi! GlamBook Special: Get ${discountPct}% off ${serviceDesc} at our salons!${period}${link}`;
+}
+
 const SmsManager = () => {
+  const queryClient = useQueryClient();
   const [composeOpen, setComposeOpen] = useState(false);
+
+  // Form state
+  const [campaignName, setCampaignName] = useState("");
+  const [segment, setSegment] = useState("all");
+  const [discountPct, setDiscountPct] = useState(10);
+  const [discountScope, setDiscountScope] = useState<"all_services" | "specific_service" | "multiple_services">("all_services");
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [validFrom, setValidFrom] = useState("");
+  const [validTo, setValidTo] = useState("");
+  const [customLink, setCustomLink] = useState("");
+  const [message, setMessage] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+
+  // Fetch customers whenever segment or dialog changes
+  const { data: customersData, isFetching: loadingCustomers } = useQuery({
+    queryKey: ["campaignCustomers", segment],
+    queryFn: () => fetchCampaignCustomers(segment),
+    enabled: composeOpen,
+  });
+
+  // Fetch all services once when dialog opens
+  const { data: allServices = [] } = useQuery({
+    queryKey: ["campaignServices"],
+    queryFn: fetchCampaignServices,
+    enabled: composeOpen,
+  });
+
+  const selectedServices = allServices.filter((s) => selectedServiceIds.includes(s.id));
+
+  // Auto-generate message whenever offer fields change, but only if user hasn't typed manually
+  useEffect(() => {
+    const auto = buildMessage({ discountPct, discountScope, selectedServices, validFrom, validTo, customLink });
+    setMessage(auto);
+  }, [discountPct, discountScope, selectedServiceIds, validFrom, validTo, customLink, allServices]);
+
+  const { mutate: doSend, isPending: sending } = useMutation({
+    mutationFn: () => sendSmsCampaign({
+      campaignName,
+      segment,
+      discountPct,
+      discountScope,
+      serviceIds: selectedServiceIds,
+      validFrom,
+      validTo,
+      customLink,
+      message,
+      scheduledAt: scheduledAt || undefined,
+      recipientCount: customersData?.count ?? 0,
+    }),
+    onSuccess: (res) => {
+      toast.success(`Campaign scheduled for ${res.recipientCount} recipients`);
+      queryClient.invalidateQueries({ queryKey: ["campaignCustomers"] });
+      setComposeOpen(false);
+      // reset
+      setCampaignName(""); setSegment("all"); setDiscountPct(10);
+      setDiscountScope("all_services"); setSelectedServiceIds([]);
+      setValidFrom(""); setValidTo(""); setCustomLink(""); setMessage(""); setScheduledAt("");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to schedule campaign"),
+  });
+
+  const toggleService = (id: string) =>
+    setSelectedServiceIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+
+  const recipientCount = customersData?.count ?? 0;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Promotion SMS Management</h2>
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogTrigger asChild><Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Campaign</Button></DialogTrigger>
-          <DialogContent>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Campaign</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Create SMS Campaign</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div><Label>Campaign Name</Label><Input placeholder="e.g. April Offers" /></div>
-              <div><Label>Target Audience</Label>
-                <Select><SelectTrigger><SelectValue placeholder="Select audience" /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">All Users</SelectItem><SelectItem value="active">Active Customers</SelectItem><SelectItem value="inactive">Inactive Customers</SelectItem><SelectItem value="owners">Salon Owners</SelectItem></SelectContent>
-                </Select>
+            <div className="space-y-5 pt-2 max-h-[75vh] overflow-y-auto pr-1">
+
+              {/* Campaign Name */}
+              <div>
+                <Label>Campaign Name</Label>
+                <Input placeholder="e.g. April Offers" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} />
               </div>
-              <div><Label>Message</Label><Textarea rows={3} placeholder="Type your SMS message..." /><p className="text-xs text-muted-foreground mt-1">Max 160 characters per SMS</p></div>
-              <div><Label>Schedule</Label><Input type="datetime-local" /></div>
-              <Button className="w-full" onClick={() => { toast.success("SMS campaign scheduled"); setComposeOpen(false); }}>Schedule Campaign</Button>
+
+              {/* Target Audience */}
+              <div className="space-y-1">
+                <Label>Target Audience</Label>
+                <Select value={segment} onValueChange={setSegment}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SEGMENTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 pt-0.5">
+                  {loadingCustomers
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Loading customers…</>
+                    : <><Users className="h-3 w-3" /> <span className="font-semibold">{recipientCount}</span> recipient{recipientCount !== 1 ? "s" : ""} matched</>}
+                </p>
+              </div>
+
+              {/* Discount */}
+              <div className="space-y-3 rounded-lg border p-3">
+                <p className="text-sm font-medium">Offer / Discount</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Discount %</Label>
+                    <Input type="number" min={1} max={100} value={discountPct}
+                      onChange={(e) => setDiscountPct(Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Apply To</Label>
+                    <Select value={discountScope} onValueChange={(v) => { setDiscountScope(v as any); setSelectedServiceIds([]); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all_services">All Services</SelectItem>
+                        <SelectItem value="specific_service">One Specific Service</SelectItem>
+                        <SelectItem value="multiple_services">Multiple Services</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Service picker */}
+                {discountScope !== "all_services" && (
+                  <div>
+                    <Label className="text-xs">Select Service{discountScope === "multiple_services" ? "s" : ""}</Label>
+                    <div className="mt-1 max-h-36 overflow-y-auto rounded border divide-y">
+                      {allServices.map((svc) => {
+                        const checked = selectedServiceIds.includes(svc.id);
+                        const isDisabled = discountScope === "specific_service" && selectedServiceIds.length === 1 && !checked;
+                        return (
+                          <label key={svc.id} className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-sm hover:bg-muted/50 ${isDisabled ? "opacity-40 pointer-events-none" : ""}`}>
+                            <Checkbox checked={checked} onCheckedChange={() => toggleService(svc.id)} />
+                            <span className="flex-1">{svc.name}</span>
+                            <span className="text-xs text-muted-foreground">{svc.salonName}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Offer Valid Period */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Offer Valid From</Label>
+                  <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Offer Valid To</Label>
+                  <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} />
+                </div>
+              </div>
+
+              {/* Custom Link */}
+              <div>
+                <Label>Custom Booking Link</Label>
+                <Input placeholder="https://glambook.lk/book" value={customLink} onChange={(e) => setCustomLink(e.target.value)} />
+              </div>
+
+              {/* Message */}
+              <div>
+                <Label>SMS Message</Label>
+                <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message auto-fills from offer details above…" />
+                <p className="text-xs text-muted-foreground mt-1">{message.length}/160 characters</p>
+              </div>
+
+              {/* Schedule */}
+              <div>
+                <Label>Schedule Send (optional)</Label>
+                <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+                <p className="text-xs text-muted-foreground mt-1">Leave blank to send immediately</p>
+              </div>
+
+              <Button className="w-full" disabled={sending || !campaignName || !message || recipientCount === 0} onClick={() => doSend()}>
+                {sending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Scheduling…</> : `Send to ${recipientCount} Recipient${recipientCount !== 1 ? "s" : ""}`}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
       <Card>
         <Table>
           <TableHeader>
@@ -1410,7 +1647,6 @@ const Admin = () => {
             <TabsTrigger value="website" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Globe className="h-3.5 w-3.5" /> Website</TabsTrigger>
             <TabsTrigger value="promotions" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
             <TabsTrigger value="coupons" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
-            <TabsTrigger value="sms" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
           </TabsList>
 
           <div className="bg-card border border-border shadow-sm p-8 min-h-[500px] rounded-sm">
@@ -1421,7 +1657,6 @@ const Admin = () => {
             <TabsContent value="website" className="mt-0 outline-none"><WebsiteManager /></TabsContent>
             <TabsContent value="promotions" className="mt-0 outline-none"><PromotionManager /></TabsContent>
             <TabsContent value="coupons" className="mt-0 outline-none"><CouponManager /></TabsContent>
-            <TabsContent value="sms" className="mt-0 outline-none"><SmsManager /></TabsContent>
           </div>
         </Tabs>
       </div>

@@ -334,7 +334,7 @@ const Dashboard = () => {
                   { id: "profile", label: "Salon Profile" },
                   { id: "services", label: "Services" },
                   { id: "technicians", label: "Technicians" },
-                  { id: "promotions", label: "Promotions" },
+                  { id: "promotions", label: "SMS Campaigns" },
                   { id: "coupons", label: "Coupons" },
                   { id: "settings", label: "Settings" },
                 ].map((t) => (
@@ -365,7 +365,7 @@ const Dashboard = () => {
                   <TechnicianManager salonId={selectedSalonId} />
                 </TabsContent>
                 <TabsContent value="promotions" className="mt-0 outline-none">
-                  <PromotionSMS />
+                  <PromotionSMS salonId={selectedSalonId} />
                 </TabsContent>
                 <TabsContent value="coupons" className="mt-0 outline-none">
                   <CouponManager />

@@ -132,3 +132,51 @@ export async function suspendSalon(id: string): Promise<void> {
 export async function draftSalon(id: string): Promise<void> {
   return apiRequest<void>(`/admin/salons/${id}/draft`, { method: "PATCH" });
 }
+
+// ── SMS Campaign ──────────────────────────────────────────────────────────
+
+export type CampaignCustomer = {
+  name: string;
+  phone: string;
+  email: string | null;
+  bookingCount: number;
+};
+
+export type CampaignCustomersResponse = {
+  customers: CampaignCustomer[];
+  count: number;
+};
+
+export type CampaignService = {
+  id: string;
+  name: string;
+  salonName: string;
+  priceCents: number;
+  durationMin: number;
+};
+
+export type SendSmsCampaignPayload = {
+  campaignName: string;
+  segment: string;
+  discountPct: number;
+  discountScope: "all_services" | "specific_service" | "multiple_services";
+  serviceIds: string[];
+  validFrom: string;
+  validTo: string;
+  customLink: string;
+  message: string;
+  scheduledAt?: string;
+  recipientCount: number;
+};
+
+export async function fetchCampaignCustomers(segment: string): Promise<CampaignCustomersResponse> {
+  return apiRequest<CampaignCustomersResponse>(`/admin/campaign/customers?segment=${segment}`, { method: "GET" });
+}
+
+export async function fetchCampaignServices(): Promise<CampaignService[]> {
+  return apiRequest<CampaignService[]>("/admin/campaign/services", { method: "GET" });
+}
+
+export async function sendSmsCampaign(payload: SendSmsCampaignPayload): Promise<{ message: string; recipientCount: number }> {
+  return apiRequest("/admin/campaign/sms", { method: "POST", body: JSON.stringify(payload) });
+}
