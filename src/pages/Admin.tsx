@@ -16,6 +16,7 @@ import {
   Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle, Loader2,
   CalendarCheck, Building2, RefreshCw,
 } from "lucide-react";
+import CampaignRequestManager from "@/components/admin/CampaignRequestManager";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
@@ -1647,6 +1648,7 @@ const Admin = () => {
             <TabsTrigger value="website" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Globe className="h-3.5 w-3.5" /> Website</TabsTrigger>
             <TabsTrigger value="promotions" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
             <TabsTrigger value="coupons" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
+            <TabsTrigger value="campaigns" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><MessageSquare className="h-3.5 w-3.5" /> Campaigns</TabsTrigger>
           </TabsList>
 
           <div className="bg-card border border-border shadow-sm p-8 min-h-[500px] rounded-sm">
@@ -1657,6 +1659,7 @@ const Admin = () => {
             <TabsContent value="website" className="mt-0 outline-none"><WebsiteManager /></TabsContent>
             <TabsContent value="promotions" className="mt-0 outline-none"><PromotionManager /></TabsContent>
             <TabsContent value="coupons" className="mt-0 outline-none"><CouponManager /></TabsContent>
+            <TabsContent value="campaigns" className="mt-0 outline-none"><CampaignRequestManager /></TabsContent>
           </div>
         </Tabs>
       </div>

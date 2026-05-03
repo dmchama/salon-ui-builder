@@ -67,7 +67,7 @@ export type OwnerCampaignCustomersResponse = {
   count: number;
 };
 
-export type SendOwnerSmsCampaignPayload = {
+export type SubmitCampaignRequestPayload = {
   salonId: string;
   campaignName: string;
   segment: string;
@@ -76,10 +76,26 @@ export type SendOwnerSmsCampaignPayload = {
   serviceIds: string[];
   validFrom: string;
   validTo: string;
-  customLink: string;
   message: string;
   scheduledAt?: string;
   recipientCount: number;
+  receipt?: File;
+};
+
+export type CampaignHistoryRow = {
+  id: string;
+  campaignName: string;
+  discountPct: number;
+  discountScope: string;
+  recipientCount: number;
+  priceCents: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNote: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  receiptUrl: string | null;
+  createdAt: string;
+  promoCode: { code: string; usageCount: number; active: boolean } | null;
 };
 
 export async function fetchOwnerCampaignCustomers(salonId: string, segment: string): Promise<OwnerCampaignCustomersResponse> {
@@ -90,6 +106,27 @@ export async function fetchOwnerCampaignServices(salonId: string): Promise<Owner
   return apiRequest<OwnerCampaignService[]>(`/salon-owners/campaign/services?salonId=${salonId}`, { method: "GET" });
 }
 
-export async function sendOwnerSmsCampaign(payload: SendOwnerSmsCampaignPayload): Promise<{ message: string; recipientCount: number }> {
-  return apiRequest("/salon-owners/campaign/sms", { method: "POST", body: JSON.stringify(payload) });
+export async function fetchOwnerSmsCampaignPrice(): Promise<{ priceCents: number }> {
+  return apiRequest<{ priceCents: number }>("/salon-owners/campaign/sms-price", { method: "GET" });
+}
+
+export async function submitOwnerCampaignRequest(payload: SubmitCampaignRequestPayload): Promise<{ message: string; requestId: string }> {
+  const form = new FormData();
+  form.append("salonId", payload.salonId);
+  form.append("campaignName", payload.campaignName);
+  form.append("segment", payload.segment);
+  form.append("discountPct", String(payload.discountPct));
+  form.append("discountScope", payload.discountScope);
+  form.append("serviceIds", JSON.stringify(payload.serviceIds));
+  form.append("validFrom", payload.validFrom);
+  form.append("validTo", payload.validTo);
+  form.append("message", payload.message);
+  form.append("recipientCount", String(payload.recipientCount));
+  if (payload.scheduledAt) form.append("scheduledAt", payload.scheduledAt);
+  if (payload.receipt) form.append("receipt", payload.receipt);
+  return apiRequest("/salon-owners/campaign/request", { method: "POST", body: form });
+}
+
+export async function fetchOwnerCampaignHistory(salonId: string): Promise<CampaignHistoryRow[]> {
+  return apiRequest<CampaignHistoryRow[]>(`/salon-owners/campaign/history?salonId=${salonId}`, { method: "GET" });
 }

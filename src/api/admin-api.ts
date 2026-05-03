@@ -180,3 +180,46 @@ export async function fetchCampaignServices(): Promise<CampaignService[]> {
 export async function sendSmsCampaign(payload: SendSmsCampaignPayload): Promise<{ message: string; recipientCount: number }> {
   return apiRequest("/admin/campaign/sms", { method: "POST", body: JSON.stringify(payload) });
 }
+
+// ── SMS Campaign Price & Requests ─────────────────────────────────────────
+
+export async function fetchSmsCampaignPrice(): Promise<{ priceCents: number }> {
+  return apiRequest<{ priceCents: number }>("/admin/sms-price", { method: "GET" });
+}
+
+export async function saveSmsCampaignPrice(priceCents: number): Promise<{ priceCents: number }> {
+  return apiRequest<{ priceCents: number }>("/admin/sms-price", { method: "PATCH", body: JSON.stringify({ priceCents }) });
+}
+
+export type AdminCampaignRequestDto = {
+  id: string;
+  campaignName: string;
+  segment: string;
+  discountPct: number;
+  discountScope: string;
+  serviceIds: string[] | null;
+  validFrom: string | null;
+  validTo: string | null;
+  message: string;
+  recipientCount: number;
+  receiptUrl: string | null;
+  priceCents: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNote: string | null;
+  createdAt: string;
+  owner: { id: string; displayName: string; email: string };
+  salon: { id: string; name: string; slug: string };
+  promoCode: { code: string; usageCount: number; active: boolean } | null;
+};
+
+export async function fetchAdminCampaignRequests(): Promise<AdminCampaignRequestDto[]> {
+  return apiRequest<AdminCampaignRequestDto[]>("/admin/campaign-requests", { method: "GET" });
+}
+
+export async function approveAdminCampaignRequest(id: string): Promise<{ message: string; promoCode: string; salonSlug: string }> {
+  return apiRequest(`/admin/campaign-requests/${id}/approve`, { method: "PATCH" });
+}
+
+export async function rejectAdminCampaignRequest(id: string, note: string): Promise<{ message: string }> {
+  return apiRequest(`/admin/campaign-requests/${id}/reject`, { method: "PATCH", body: JSON.stringify({ note }) });
+}

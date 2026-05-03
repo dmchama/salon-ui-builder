@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,13 +10,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Loader2, Users } from "lucide-react";
+import { Plus, Loader2, Users, Upload, FileText, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   fetchOwnerCampaignCustomers,
   fetchOwnerCampaignServices,
-  sendOwnerSmsCampaign,
+  fetchOwnerCampaignHistory,
+  fetchOwnerSmsCampaignPrice,
+  submitOwnerCampaignRequest,
   type OwnerCampaignService,
+  type CampaignHistoryRow,
 } from "@/api/salon-owner-api";
 
 const SEGMENTS = [
@@ -27,20 +30,14 @@ const SEGMENTS = [
   { value: "last12months", label: "Booked in Last 12 Months" },
 ];
 
-const mockHistory = [
-  { id: 1, campaign: "Welcome Offer", recipients: 12, sent: 12, delivered: 11, date: "2026-04-10", status: "completed" },
-  { id: 2, campaign: "Easter Promo", recipients: 8, sent: 8, delivered: 8, date: "2026-04-20", status: "completed" },
-];
-
 function buildMessage(opts: {
   discountPct: number;
   discountScope: string;
   selectedServices: OwnerCampaignService[];
   validFrom: string;
   validTo: string;
-  customLink: string;
 }): string {
-  const { discountPct, discountScope, selectedServices, validFrom, validTo, customLink } = opts;
+  const { discountPct, discountScope, selectedServices, validFrom, validTo } = opts;
   if (!discountPct) return "";
   let serviceDesc = "all services";
   if (discountScope === "specific_service" && selectedServices.length === 1) {
@@ -49,8 +46,13 @@ function buildMessage(opts: {
     serviceDesc = selectedServices.map((s) => s.name).join(", ");
   }
   const period = validFrom && validTo ? ` Valid ${validFrom} to ${validTo}.` : "";
-  const link = customLink ? ` Book: ${customLink}` : "";
-  return `Hi! Special offer: Get ${discountPct}% off ${serviceDesc} at our salon!${period}${link}`;
+  return `Hi! Special offer: Get ${discountPct}% off ${serviceDesc} at our salon!${period} Use the link below to book with discount applied.`;
+}
+
+function StatusBadge({ status }: { status: CampaignHistoryRow["status"] }) {
+  if (status === "APPROVED") return <Badge className="bg-green-100 text-green-700 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
+  if (status === "REJECTED") return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+  return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
 }
 
 interface Props {
@@ -60,6 +62,8 @@ interface Props {
 const PromotionSMS = ({ salonId }: Props) => {
   const queryClient = useQueryClient();
   const [composeOpen, setComposeOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const [campaignName, setCampaignName] = useState("");
   const [segment, setSegment] = useState("all");
@@ -68,9 +72,20 @@ const PromotionSMS = ({ salonId }: Props) => {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [validFrom, setValidFrom] = useState("");
   const [validTo, setValidTo] = useState("");
-  const [customLink, setCustomLink] = useState("");
   const [message, setMessage] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+
+  const { data: priceData } = useQuery<{ priceCents: number }>({
+    queryKey: ["ownerSmsCampaignPrice"],
+    queryFn: fetchOwnerSmsCampaignPrice,
+  });
+
+  const { data: campaignHistory = [] } = useQuery({
+    queryKey: ["ownerCampaignHistory", salonId],
+    queryFn: () => fetchOwnerCampaignHistory(salonId!),
+    enabled: !!salonId,
+  });
 
   const { data: customersData, isFetching: loadingCustomers } = useQuery({
     queryKey: ["ownerCampaignCustomers", salonId, segment],
@@ -87,12 +102,16 @@ const PromotionSMS = ({ salonId }: Props) => {
   const selectedServices = allServices.filter((s) => selectedServiceIds.includes(s.id));
 
   useEffect(() => {
-    const auto = buildMessage({ discountPct, discountScope, selectedServices, validFrom, validTo, customLink });
+    const auto = buildMessage({ discountPct, discountScope, selectedServices, validFrom, validTo });
     setMessage(auto);
-  }, [discountPct, discountScope, selectedServiceIds, validFrom, validTo, customLink, allServices]);
+  }, [discountPct, discountScope, selectedServiceIds, validFrom, validTo, allServices]);
 
-  const { mutate: doSend, isPending: sending } = useMutation({
-    mutationFn: () => sendOwnerSmsCampaign({
+  const recipientCount = customersData?.count ?? 0;
+  const perSmsPriceCents = priceData?.priceCents ?? 0;
+  const totalPriceCents = perSmsPriceCents * recipientCount;
+
+  const { mutate: doSubmit, isPending: submitting } = useMutation({
+    mutationFn: () => submitOwnerCampaignRequest({
       salonId: salonId!,
       campaignName,
       segment,
@@ -101,26 +120,27 @@ const PromotionSMS = ({ salonId }: Props) => {
       serviceIds: selectedServiceIds,
       validFrom,
       validTo,
-      customLink,
       message,
       scheduledAt: scheduledAt || undefined,
-      recipientCount: customersData?.count ?? 0,
+      recipientCount,
+      receipt: receiptFile ?? undefined,
     }),
-    onSuccess: (res) => {
-      toast.success(`Campaign scheduled for ${res.recipientCount} recipients`);
-      queryClient.invalidateQueries({ queryKey: ["ownerCampaignCustomers"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ownerCampaignHistory", salonId] });
       setComposeOpen(false);
+      setSuccessOpen(true);
       setCampaignName(""); setSegment("all"); setDiscountPct(10);
       setDiscountScope("all_services"); setSelectedServiceIds([]);
-      setValidFrom(""); setValidTo(""); setCustomLink(""); setMessage(""); setScheduledAt("");
+      setValidFrom(""); setValidTo(""); setMessage(""); setScheduledAt("");
+      setReceiptFile(null);
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed to schedule campaign"),
+    onError: (e: any) => toast.error(e.message ?? "Failed to submit campaign request"),
   });
 
   const toggleService = (id: string) =>
     setSelectedServiceIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
-  const recipientCount = customersData?.count ?? 0;
+  const canSubmit = !submitting && !!campaignName && !!message && recipientCount > 0;
 
   if (!salonId) {
     return (
@@ -133,7 +153,14 @@ const PromotionSMS = ({ salonId }: Props) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">SMS Campaigns</h2>
+        <div>
+          <h2 className="font-display text-lg font-semibold">SMS Campaigns</h2>
+          {perSmsPriceCents > 0 && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Rate: <span className="font-semibold text-foreground">Rs. {(perSmsPriceCents / 100).toFixed(2)}</span> per SMS
+            </p>
+          )}
+        </div>
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Campaign</Button>
@@ -214,11 +241,6 @@ const PromotionSMS = ({ salonId }: Props) => {
               </div>
 
               <div>
-                <Label>Custom Booking Link</Label>
-                <Input placeholder="https://glambook.lk/book" value={customLink} onChange={(e) => setCustomLink(e.target.value)} />
-              </div>
-
-              <div>
                 <Label>SMS Message</Label>
                 <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message auto-fills from offer details above…" />
                 <p className="text-xs text-muted-foreground mt-1">{message.length}/160 characters</p>
@@ -227,40 +249,112 @@ const PromotionSMS = ({ salonId }: Props) => {
               <div>
                 <Label>Schedule Send (optional)</Label>
                 <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
-                <p className="text-xs text-muted-foreground mt-1">Leave blank to send immediately</p>
+                <p className="text-xs text-muted-foreground mt-1">Leave blank to send immediately after approval</p>
               </div>
 
-              <Button className="w-full" disabled={sending || !campaignName || !message || recipientCount === 0} onClick={() => doSend()}>
-                {sending
-                  ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Scheduling…</>
-                  : `Send to ${recipientCount} Recipient${recipientCount !== 1 ? "s" : ""}`}
+              {perSmsPriceCents > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-amber-800">Payment Required</p>
+                    <div className="text-right">
+                      <p className="text-xs text-amber-700">
+                        {recipientCount} SMS × Rs. {(perSmsPriceCents / 100).toFixed(2)}
+                      </p>
+                      <p className="text-sm font-bold text-amber-900">
+                        Total: Rs. {(totalPriceCents / 100).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-700">Please make the payment and upload your receipt below.</p>
+                  <input
+                    ref={receiptInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Button type="button" variant="outline" size="sm" className="gap-2 w-full"
+                    onClick={() => receiptInputRef.current?.click()}>
+                    {receiptFile
+                      ? <><FileText className="h-4 w-4 text-green-600" /><span className="truncate max-w-[200px]">{receiptFile.name}</span></>
+                      : <><Upload className="h-4 w-4" /> Upload Receipt</>}
+                  </Button>
+                </div>
+              )}
+
+              <Button className="w-full" disabled={!canSubmit || (perSmsPriceCents > 0 && !receiptFile)} onClick={() => doSubmit()}>
+                {submitting
+                  ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Submitting…</>
+                  : <>Submit Request{perSmsPriceCents > 0 && recipientCount > 0 ? ` · Rs. ${(totalPriceCents / 100).toFixed(2)}` : ""}</>}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* Request submitted dialog */}
+      <Dialog open={successOpen} onOpenChange={setSuccessOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Request Submitted
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Your campaign request has been submitted and is awaiting admin approval. Once approved, your promo code and booking link will appear in the campaign history below.
+            </p>
+            <Button className="w-full" onClick={() => setSuccessOpen(false)}>Got it</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Campaign</TableHead>
-              <TableHead>Recipients</TableHead>
-              <TableHead>Sent</TableHead>
-              <TableHead>Delivered</TableHead>
-              <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Discount</TableHead>
+              <TableHead>Recipients</TableHead>
+              <TableHead>Total Fee</TableHead>
+              <TableHead>Code / Used</TableHead>
+              <TableHead>Valid Until</TableHead>
+              <TableHead>Submitted</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockHistory.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="font-medium">{s.campaign}</TableCell>
-                <TableCell>{s.recipients}</TableCell>
-                <TableCell>{s.sent}</TableCell>
-                <TableCell>{s.delivered}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{s.date}</TableCell>
-                <TableCell><Badge variant={s.status === "completed" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
+            {campaignHistory.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                  No campaigns yet. Create your first SMS campaign above.
+                </TableCell>
+              </TableRow>
+            )}
+            {campaignHistory.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="font-medium">{row.campaignName}</TableCell>
+                <TableCell>
+                  <StatusBadge status={row.status} />
+                  {row.adminNote && (
+                    <p className="text-xs text-muted-foreground mt-1 max-w-[160px] truncate" title={row.adminNote}>{row.adminNote}</p>
+                  )}
+                </TableCell>
+                <TableCell>{row.discountPct}%</TableCell>
+                <TableCell>{row.recipientCount}</TableCell>
+                <TableCell className="text-sm">Rs. {(row.priceCents / 100).toFixed(2)}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {row.promoCode
+                    ? <span>{row.promoCode.code} · {row.promoCode.usageCount} used</span>
+                    : <span className="text-muted-foreground">—</span>}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {row.validTo ? new Date(row.validTo).toLocaleDateString() : "No expiry"}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(row.createdAt).toLocaleDateString()}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

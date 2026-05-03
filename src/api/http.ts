@@ -23,7 +23,7 @@ export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Pr
   const { skipAuth, ...rest } = init;
   const url = path.startsWith("/api") ? path : `/api/v1${path.startsWith("/") ? path : `/${path}`}`;
   const headers = new Headers(rest.headers);
-  if (!headers.has("Content-Type") && rest.body !== undefined) {
+  if (!headers.has("Content-Type") && rest.body !== undefined && !(rest.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
   if (!skipAuth) {

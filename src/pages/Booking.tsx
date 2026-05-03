@@ -10,12 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { fetchPublicSalonBySlug } from "@/api/salon-api";
-import { createGuestBooking, type BookingCreated } from "@/api/bookings-api";
+import { createGuestBooking, validatePromoCode, type BookingCreated, type PromoCodeInfo } from "@/api/bookings-api";
 import { ApiError } from "@/api/http";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ const Booking = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const preselectedService = searchParams.get("service") || "";
+  const promoCodeParam = searchParams.get("promo") || "";
 
   const { data: salon, isLoading, isError, error } = useQuery({
     queryKey: ["salon-public", slug],
@@ -45,6 +46,8 @@ const Booking = () => {
   const [paymentOption, setPaymentOption] = useState("pay-at-salon");
   const [selectedTechnician, setSelectedTechnician] = useState("");
   const [confirmedBooking, setConfirmedBooking] = useState<BookingCreated | null>(null);
+  const [promoInfo, setPromoInfo] = useState<PromoCodeInfo | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const technicians = salon?.technicians ?? [];
 
@@ -56,6 +59,24 @@ const Booking = () => {
         : "";
     if (valid) setSelectedService(valid);
   }, [salon, preselectedService]);
+
+  useEffect(() => {
+    if (!promoCodeParam || !salon) return;
+    setPromoInfo(null);
+    setPromoError(null);
+    validatePromoCode(promoCodeParam, salon.id)
+      .then((info) => setPromoInfo(info))
+      .catch((err: unknown) => {
+        const msg = err instanceof ApiError ? err.message : "Invalid promo code";
+        setPromoError(msg);
+      });
+  }, [promoCodeParam, salon?.id]);
+
+  const promoApplies =
+    promoInfo &&
+    (promoInfo.discountScope === "all_services" ||
+      !selectedService ||
+      (promoInfo.serviceIds ?? []).includes(selectedService));
 
   const bookingMutation = useMutation({
     mutationFn: async () => {
@@ -77,6 +98,7 @@ const Booking = () => {
         guestPhone: guestPhone.trim(),
         notes: notesExtra,
         ...(selectedTechnician ? { technicianId: selectedTechnician } : {}),
+        ...(promoApplies && promoCodeParam ? { promoCode: promoCodeParam } : {}),
       });
     },
     onSuccess: (booking) => {
@@ -177,10 +199,25 @@ const Booking = () => {
                 </div>
                 <div className="flex justify-between text-sm py-2 border-b border-black/5">
                   <span className="text-black/60 uppercase tracking-widest">Price</span>
-                  <span className="font-bold tracking-widest">
-                    Rs. {(service.priceCents / 100).toLocaleString()}
-                  </span>
+                  {confirmedBooking?.discountPct ? (
+                    <span className="text-right">
+                      <span className="line-through text-black/30 text-xs mr-2">Rs. {(service.priceCents / 100).toLocaleString()}</span>
+                      <span className="font-bold tracking-widest text-gold">
+                        Rs. {Math.round(service.priceCents * (1 - confirmedBooking.discountPct / 100) / 100).toLocaleString()}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="font-bold tracking-widest">
+                      Rs. {(service.priceCents / 100).toLocaleString()}
+                    </span>
+                  )}
                 </div>
+                {confirmedBooking?.discountPct && (
+                  <div className="flex justify-between text-sm py-2 border-b border-black/5">
+                    <span className="text-black/60 uppercase tracking-widest">Discount</span>
+                    <span className="font-bold tracking-widest text-gold">{confirmedBooking.discountPct}% off</span>
+                  </div>
+                )}
               </>
             )}
             <div className="flex justify-between text-sm py-2 border-b border-black/5">
@@ -267,9 +304,48 @@ const Booking = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-3 border border-black/5 p-6"
               >
-                <p className="text-xs uppercase tracking-widest text-black/50">
-                  Selected · {service.durationMin} min · Rs. {(service.priceCents / 100).toLocaleString()}
-                </p>
+                {promoApplies ? (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-widest text-black/50">
+                      Selected · {service.durationMin} min
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="line-through text-black/30 text-sm">Rs. {(service.priceCents / 100).toLocaleString()}</span>
+                      <span className="font-bold text-gold text-sm">
+                        Rs. {Math.round(service.priceCents * (1 - promoInfo!.discountPct / 100) / 100).toLocaleString()}
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-gold/10 text-gold text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-widest">
+                        <Tag className="h-3 w-3" />{promoInfo!.discountPct}% off
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs uppercase tracking-widest text-black/50">
+                    Selected · {service.durationMin} min · Rs. {(service.priceCents / 100).toLocaleString()}
+                  </p>
+                )}
+              </motion.div>
+            )}
+
+            {promoCodeParam && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                {promoInfo && promoApplies && (
+                  <div className="flex items-center gap-2 border border-gold/30 bg-gold/5 px-4 py-3 text-sm">
+                    <Tag className="h-4 w-4 text-gold shrink-0" />
+                    <span className="font-bold text-gold uppercase tracking-widest">{promoInfo.discountPct}% discount applied</span>
+                    <span className="text-black/40 text-xs ml-1">· code {promoCodeParam}</span>
+                  </div>
+                )}
+                {promoInfo && !promoApplies && selectedService && (
+                  <div className="border border-black/10 bg-black/2 px-4 py-3 text-xs text-black/50 uppercase tracking-widest">
+                    Promo code does not apply to the selected service
+                  </div>
+                )}
+                {promoError && (
+                  <div className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-600 uppercase tracking-widest">
+                    {promoError}
+                  </div>
+                )}
               </motion.div>
             )}
 

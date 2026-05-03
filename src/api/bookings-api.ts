@@ -18,6 +18,8 @@ export type BookingCreated = {
   salonId: string;
   serviceId: string;
   technicianId: string | null;
+  promoCodeId: string | null;
+  discountPct: number | null;
   startAt: string;
   endAt: string;
   status: string;
@@ -35,7 +37,30 @@ export type CreateBookingPayload = {
   guestPhone: string;
   notes?: string;
   technicianId?: string;
+  promoCode?: string;
 };
+
+export type PromoCodeInfo = {
+  valid: true;
+  discountPct: number;
+  discountScope: "all_services" | "specific_service" | "multiple_services";
+  serviceIds: string[] | null;
+  validTo: string | null;
+};
+
+/** Public endpoint — validate a promo code before booking. */
+export async function validatePromoCode(
+  code: string,
+  salonId: string,
+  serviceId?: string,
+): Promise<PromoCodeInfo> {
+  const params = new URLSearchParams({ code, salonId });
+  if (serviceId) params.set("serviceId", serviceId);
+  return apiRequest<PromoCodeInfo>(`/promo-codes/validate?${params}`, {
+    method: "GET",
+    skipAuth: true,
+  });
+}
 
 /** Public endpoint — never sends JWT (guest booking). */
 export async function createGuestBooking(payload: CreateBookingPayload): Promise<BookingCreated> {
