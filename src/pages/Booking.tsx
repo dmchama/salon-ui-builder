@@ -25,6 +25,12 @@ function combineLocalDateAndTime(dateStr: string, timeStr: string): Date {
   return new Date(y, (mo ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
 }
 
+const inputClass =
+  "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400";
+
+const selectTriggerClass =
+  "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-700 focus:ring-2 focus:ring-gold/40 focus:ring-offset-0";
+
 const Booking = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -82,9 +88,7 @@ const Booking = () => {
     mutationFn: async () => {
       if (!salon) throw new Error("Salon missing");
       const start = combineLocalDateAndTime(date, time);
-      if (start <= new Date()) {
-        throw new Error("Please choose a future date and time.");
-      }
+      if (start <= new Date()) throw new Error("Please choose a future date and time.");
       const notesExtra =
         paymentOption === "pay-now"
           ? "Payment: pay online (integration pending)."
@@ -121,11 +125,11 @@ const Booking = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-32 flex justify-center gap-2 text-black/50 py-24">
+        <div className="pt-32 flex justify-center gap-2 text-gray-400 py-24">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading booking…</span>
+          <span className="text-sm">Loading booking…</span>
         </div>
         <Footer />
       </div>
@@ -135,12 +139,12 @@ const Booking = () => {
   if (isError || !salon) {
     const msg = error instanceof ApiError ? error.message : "Salon not found";
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <div className="pt-32 container text-center py-20">
-          <h1 className="font-display text-2xl font-bold uppercase tracking-widest text-black">{msg}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-gray-900">{msg}</h1>
           <Link to="/salons">
-            <Button variant="outline" className="mt-6 rounded-none uppercase tracking-widest text-xs">
+            <Button variant="outline" className="mt-6 rounded-xl h-10 px-5 border-gray-200 text-gray-700 text-sm">
               Back to Salons
             </Button>
           </Link>
@@ -164,65 +168,71 @@ const Booking = () => {
 
   if (confirmedBooking) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-white">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
         <Navbar />
-        <div className="pt-32 container max-w-2xl text-center py-24 space-y-8">
+        <div className="pt-32 container max-w-lg text-center py-16 space-y-8">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}>
-            <CheckCircle className="h-20 w-20 text-gold mx-auto" />
+            <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto">
+              <CheckCircle className="h-10 w-10 text-emerald-500" />
+            </div>
           </motion.div>
-          <div className="space-y-4">
-            <h1 className="font-display text-4xl font-bold uppercase tracking-widest text-black">Booking Received</h1>
-            <p className="text-black/60 font-light tracking-wide text-lg">
-              Your request at <strong className="font-bold text-black">{salon.name}</strong> is pending confirmation.
+
+          <div className="space-y-2">
+            <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900">Booking Received</h1>
+            <p className="text-gray-500 leading-relaxed">
+              Your request at <strong className="font-semibold text-gray-900">{salon.name}</strong> is pending confirmation.
             </p>
-            <p className="text-xs text-black/40 uppercase tracking-widest">
-              Reference <span className="font-mono text-black/70">{confirmedBooking.id}</span>
+            <p className="text-xs text-gray-400">
+              Reference <span className="font-mono text-gray-600">{confirmedBooking.id}</span>
             </p>
           </div>
 
-          <div className="border border-black/10 p-8 text-left max-w-md mx-auto space-y-4">
+          {/* Booking summary */}
+          <div className="bg-white rounded-2xl shadow-soft border border-gray-100 p-6 text-left space-y-3">
             {locationLine && (
-              <div className="flex justify-between text-sm py-2 border-b border-black/5 gap-4">
-                <span className="text-black/60 uppercase tracking-widest shrink-0">Location</span>
-                <span className="font-bold tracking-widest text-right">{locationLine}</span>
+              <div className="flex justify-between text-sm py-2.5 border-b border-gray-100 gap-4">
+                <span className="text-gray-400">Location</span>
+                <span className="font-semibold text-gray-900 text-right">{locationLine}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm py-2 border-b border-black/5">
-              <span className="text-black/60 uppercase tracking-widest">Service</span>
-              <span className="font-bold tracking-widest">{service?.name}</span>
+            <div className="flex justify-between text-sm py-2.5 border-b border-gray-100">
+              <span className="text-gray-400">Service</span>
+              <span className="font-semibold text-gray-900">{service?.name}</span>
             </div>
             {service && (
               <>
-                <div className="flex justify-between text-sm py-2 border-b border-black/5">
-                  <span className="text-black/60 uppercase tracking-widest">Duration</span>
-                  <span className="font-bold tracking-widest">{service.durationMin} min</span>
+                <div className="flex justify-between text-sm py-2.5 border-b border-gray-100">
+                  <span className="text-gray-400">Duration</span>
+                  <span className="font-semibold text-gray-900">{service.durationMin} min</span>
                 </div>
-                <div className="flex justify-between text-sm py-2 border-b border-black/5">
-                  <span className="text-black/60 uppercase tracking-widest">Price</span>
+                <div className="flex justify-between text-sm py-2.5 border-b border-gray-100">
+                  <span className="text-gray-400">Price</span>
                   {confirmedBooking?.discountPct ? (
                     <span className="text-right">
-                      <span className="line-through text-black/30 text-xs mr-2">Rs. {(service.priceCents / 100).toLocaleString()}</span>
-                      <span className="font-bold tracking-widest text-gold">
+                      <span className="line-through text-gray-300 text-xs mr-2">
+                        Rs. {(service.priceCents / 100).toLocaleString()}
+                      </span>
+                      <span className="font-semibold text-gold">
                         Rs. {Math.round(service.priceCents * (1 - confirmedBooking.discountPct / 100) / 100).toLocaleString()}
                       </span>
                     </span>
                   ) : (
-                    <span className="font-bold tracking-widest">
+                    <span className="font-semibold text-gray-900">
                       Rs. {(service.priceCents / 100).toLocaleString()}
                     </span>
                   )}
                 </div>
                 {confirmedBooking?.discountPct && (
-                  <div className="flex justify-between text-sm py-2 border-b border-black/5">
-                    <span className="text-black/60 uppercase tracking-widest">Discount</span>
-                    <span className="font-bold tracking-widest text-gold">{confirmedBooking.discountPct}% off</span>
+                  <div className="flex justify-between text-sm py-2.5 border-b border-gray-100">
+                    <span className="text-gray-400">Discount</span>
+                    <span className="font-semibold text-gold">{confirmedBooking.discountPct}% off</span>
                   </div>
                 )}
               </>
             )}
-            <div className="flex justify-between text-sm py-2 border-b border-black/5">
-              <span className="text-black/60 uppercase tracking-widest">Starts</span>
-              <span className="font-bold tracking-widest">
+            <div className="flex justify-between text-sm py-2.5 border-b border-gray-100">
+              <span className="text-gray-400">Starts</span>
+              <span className="font-semibold text-gray-900">
                 {new Date(confirmedBooking.startAt).toLocaleString(undefined, {
                   dateStyle: "medium",
                   timeStyle: "short",
@@ -230,23 +240,24 @@ const Booking = () => {
               </span>
             </div>
             {preferredTechRow && (
-              <div className="flex justify-between text-sm py-2 border-b border-black/5 gap-4">
-                <span className="text-black/60 uppercase tracking-widest shrink-0">Technician</span>
-                <span className="font-bold tracking-widest text-right">
+              <div className="flex justify-between text-sm py-2.5 border-b border-gray-100 gap-4">
+                <span className="text-gray-400 shrink-0">Technician</span>
+                <span className="font-semibold text-gray-900 text-right">
                   {preferredTechRow.name}
                   {preferredTechRow.specialization ? ` · ${preferredTechRow.specialization}` : ""}
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-sm py-2">
-              <span className="text-black/60 uppercase tracking-widest">Payment</span>
-              <span className="font-bold tracking-widest">
-                {paymentOption === "pay-now" ? "Pay online (follow-up)" : "Pay at salon"}
+            <div className="flex justify-between text-sm py-2.5">
+              <span className="text-gray-400">Payment</span>
+              <span className="font-semibold text-gray-900">
+                {paymentOption === "pay-now" ? "Pay online" : "Pay at salon"}
               </span>
             </div>
           </div>
+
           <Link to="/">
-            <Button className="rounded-none bg-black hover:bg-gold text-white uppercase tracking-widest px-8 py-6">
+            <Button className="rounded-full bg-gold hover:bg-gold/90 text-white px-8 h-12 font-semibold transition-all duration-200 hover:scale-105">
               Return to Home
             </Button>
           </Link>
@@ -256,185 +267,199 @@ const Booking = () => {
     );
   }
 
+  const StepCard = ({ num, title, children }: { num: number; title: string; children: React.ReactNode }) => (
+    <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100/80 space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+          <span className="text-xs font-bold text-gold">{num}</span>
+        </div>
+        <h3 className="font-display font-semibold text-base tracking-tight text-gray-900">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-white">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-32 pb-24">
-        <div className="container max-w-3xl">
+        <div className="container max-w-2xl">
           <Link
             to={`/salon/${slugPath}`}
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-black/50 hover:text-gold mb-10 transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-gold mb-8 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" /> Go Back
+            <ArrowLeft className="h-4 w-4" /> Back to Salon
           </Link>
 
-          <div className="mb-12 border-b border-black/10 pb-8">
-            <h1 className="font-display text-4xl font-bold uppercase tracking-widest text-black mb-2">Book Appointment</h1>
-            <p className="font-light tracking-wide text-black/60">{salon.name}</p>
-            {locationLine && (
-              <p className="text-sm text-black/50 mt-2 tracking-wide">{locationLine}</p>
-            )}
-            <p className="text-xs text-black/40 mt-2 uppercase tracking-widest">No account required</p>
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight text-gray-900 mb-1">
+              Book Appointment
+            </h1>
+            <p className="text-gray-500">{salon.name}</p>
+            {locationLine && <p className="text-sm text-gray-400 mt-0.5">{locationLine}</p>}
+            <span className="inline-block mt-2 text-xs text-gray-400 bg-gray-100 rounded-full px-3 py-1">
+              No account required
+            </span>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-16">
-            <div className="space-y-6">
-              <h3 className="font-display font-bold text-lg uppercase tracking-widest text-black">1. Select Service</h3>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Step 1: Service */}
+            <StepCard num={1} title="Select Service">
               {salon.services.length === 0 ? (
-                <p className="text-sm text-black/60">No bookable services yet. Please contact the salon.</p>
+                <p className="text-sm text-gray-500">No bookable services yet. Please contact the salon.</p>
               ) : (
                 <Select value={selectedService} onValueChange={setSelectedService} required>
-                  <SelectTrigger className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus:ring-0 text-sm tracking-widest uppercase py-6 bg-transparent h-auto">
-                    <SelectValue placeholder="CHOOSE A SERVICE" />
+                  <SelectTrigger className={selectTriggerClass}>
+                    <SelectValue placeholder="Choose a service" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-black/10">
+                  <SelectContent className="rounded-xl border border-gray-100 shadow-elevated">
                     {salon.services.map((s) => (
-                      <SelectItem key={s.id} value={s.id} className="uppercase tracking-widest text-xs py-3">
+                      <SelectItem key={s.id} value={s.id} className="text-sm py-2.5">
                         {s.name} · {s.durationMin} min · Rs. {(s.priceCents / 100).toLocaleString()}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
-            </div>
 
-            {selectedService && service && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-3 border border-black/5 p-6"
-              >
-                {promoApplies ? (
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-widest text-black/50">
-                      Selected · {service.durationMin} min
+              {selectedService && service && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gray-50 rounded-xl p-4"
+                >
+                  {promoApplies ? (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-400">
+                        Selected · {service.durationMin} min
+                      </p>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="line-through text-gray-300 text-sm">
+                          Rs. {(service.priceCents / 100).toLocaleString()}
+                        </span>
+                        <span className="font-bold text-gold text-sm">
+                          Rs. {Math.round(service.priceCents * (1 - promoInfo!.discountPct / 100) / 100).toLocaleString()}
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-gold/10 text-gold text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                          <Tag className="h-3 w-3" />{promoInfo!.discountPct}% off
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">
+                      {service.name} · {service.durationMin} min · Rs. {(service.priceCents / 100).toLocaleString()}
                     </p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="line-through text-black/30 text-sm">Rs. {(service.priceCents / 100).toLocaleString()}</span>
-                      <span className="font-bold text-gold text-sm">
-                        Rs. {Math.round(service.priceCents * (1 - promoInfo!.discountPct / 100) / 100).toLocaleString()}
-                      </span>
-                      <span className="inline-flex items-center gap-1 bg-gold/10 text-gold text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-widest">
-                        <Tag className="h-3 w-3" />{promoInfo!.discountPct}% off
-                      </span>
+                  )}
+                </motion.div>
+              )}
+
+              {promoCodeParam && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                  {promoInfo && promoApplies && (
+                    <div className="flex items-center gap-2 bg-gold/8 border border-gold/20 rounded-xl px-4 py-3 text-sm">
+                      <Tag className="h-4 w-4 text-gold shrink-0" />
+                      <span className="font-semibold text-gold">{promoInfo.discountPct}% discount applied</span>
+                      <span className="text-gray-400 text-xs ml-1">· {promoCodeParam}</span>
+                    </div>
+                  )}
+                  {promoInfo && !promoApplies && selectedService && (
+                    <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-400">
+                      Promo code does not apply to the selected service
+                    </div>
+                  )}
+                  {promoError && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-xs text-red-600">
+                      {promoError}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </StepCard>
+
+            {/* Step 2: Schedule */}
+            {selectedService && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <StepCard num={2} title="Schedule">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-500 block">Date</label>
+                      <Input
+                        type="date"
+                        min={todayMin}
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        required
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-500 block">Time</label>
+                      <Input
+                        type="time"
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        required
+                        className={inputClass}
+                      />
                     </div>
                   </div>
-                ) : (
-                  <p className="text-xs uppercase tracking-widest text-black/50">
-                    Selected · {service.durationMin} min · Rs. {(service.priceCents / 100).toLocaleString()}
-                  </p>
-                )}
+                </StepCard>
               </motion.div>
             )}
 
-            {promoCodeParam && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                {promoInfo && promoApplies && (
-                  <div className="flex items-center gap-2 border border-gold/30 bg-gold/5 px-4 py-3 text-sm">
-                    <Tag className="h-4 w-4 text-gold shrink-0" />
-                    <span className="font-bold text-gold uppercase tracking-widest">{promoInfo.discountPct}% discount applied</span>
-                    <span className="text-black/40 text-xs ml-1">· code {promoCodeParam}</span>
-                  </div>
-                )}
-                {promoInfo && !promoApplies && selectedService && (
-                  <div className="border border-black/10 bg-black/2 px-4 py-3 text-xs text-black/50 uppercase tracking-widest">
-                    Promo code does not apply to the selected service
-                  </div>
-                )}
-                {promoError && (
-                  <div className="border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-600 uppercase tracking-widest">
-                    {promoError}
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {selectedService && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <h3 className="font-display font-bold text-lg uppercase tracking-widest text-black">2. Schedule</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-black/50">Date</label>
-                    <Input
-                      type="date"
-                      min={todayMin}
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      required
-                      className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus-visible:ring-0 focus-visible:border-gold py-6 text-black tracking-widest uppercase bg-transparent h-auto"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-black/50">Time</label>
-                    <Input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      required
-                      className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus-visible:ring-0 focus-visible:border-gold py-6 text-black tracking-widest uppercase bg-transparent h-auto"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
+            {/* Step 3: Technician (optional) */}
             {selectedService && showTechStep && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <h3 className="font-display font-bold text-lg uppercase tracking-widest text-black">
-                  3. Preferred technician <span className="text-black/40 font-normal">(optional)</span>
-                </h3>
-                <Select
-                  value={selectedTechnician || "__any__"}
-                  onValueChange={(v) => setSelectedTechnician(v === "__any__" ? "" : v)}
-                >
-                  <SelectTrigger className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus:ring-0 text-sm tracking-widest uppercase py-6 bg-transparent h-auto">
-                    <SelectValue placeholder="ANY AVAILABLE" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-none border-black/10">
-                    <SelectItem value="__any__" className="uppercase tracking-widest text-xs py-3">
-                      Any available
-                    </SelectItem>
-                    {technicians.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="uppercase tracking-widest text-xs py-3">
-                        {t.name}
-                        {t.specialization ? ` · ${t.specialization}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <StepCard num={3} title="Preferred Technician">
+                  <Select
+                    value={selectedTechnician || "__any__"}
+                    onValueChange={(v) => setSelectedTechnician(v === "__any__" ? "" : v)}
+                  >
+                    <SelectTrigger className={selectTriggerClass}>
+                      <SelectValue placeholder="Any available" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-gray-100 shadow-elevated">
+                      <SelectItem value="__any__" className="text-sm py-2.5">Any available</SelectItem>
+                      {technicians.map((t) => (
+                        <SelectItem key={t.id} value={t.id} className="text-sm py-2.5">
+                          {t.name}{t.specialization ? ` · ${t.specialization}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </StepCard>
               </motion.div>
             )}
 
-            <div className="space-y-6">
-              <h3 className="font-display font-bold text-lg uppercase tracking-widest text-black">
-                {contactStep}. Your contact
-              </h3>
-              <div className="space-y-8">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-black/50">Full Name</label>
+            {/* Step 4: Contact */}
+            <StepCard num={contactStep} title="Your Contact">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 block">Full Name</label>
                   <Input
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
                     placeholder="Jane Doe"
                     required
                     autoComplete="name"
-                    className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus-visible:ring-0 focus-visible:border-gold py-6 text-black tracking-widest bg-transparent h-auto placeholder:text-black/20"
+                    className={inputClass}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-black/50">Phone</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-500 block">Phone</label>
                     <Input
                       value={guestPhone}
                       onChange={(e) => setGuestPhone(e.target.value)}
                       placeholder="+94 77 123 4567"
                       required
                       autoComplete="tel"
-                      className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus-visible:ring-0 focus-visible:border-gold py-6 text-black tracking-widest bg-transparent h-auto placeholder:text-black/20"
+                      className={inputClass}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-black/50">Email</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-500 block">Email</label>
                     <Input
                       type="email"
                       value={guestEmail}
@@ -442,35 +467,44 @@ const Booking = () => {
                       placeholder="you@example.com"
                       required
                       autoComplete="email"
-                      className="rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus-visible:ring-0 focus-visible:border-gold py-6 text-black tracking-widest bg-transparent h-auto placeholder:text-black/20"
+                      className={inputClass}
                     />
                   </div>
                 </div>
               </div>
-            </div>
+            </StepCard>
 
-            <div className="space-y-6">
-              <h3 className="font-display font-bold text-lg uppercase tracking-widest text-black">
-                {paymentStep}. Payment preference
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div
+            {/* Step 5: Payment */}
+            <StepCard num={paymentStep} title="Payment Preference">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
                   onClick={() => setPaymentOption("pay-at-salon")}
-                  className={`p-6 border cursor-pointer transition-colors ${paymentOption === "pay-at-salon" ? "border-gold bg-gold/5" : "border-black/5 hover:border-black/20"}`}
+                  className={`p-4 rounded-xl border-2 text-left cursor-pointer transition-all duration-150 ${
+                    paymentOption === "pay-at-salon"
+                      ? "border-gold bg-gold/5"
+                      : "border-gray-100 hover:border-gray-200 bg-gray-50"
+                  }`}
                 >
-                  <h4 className="font-bold uppercase tracking-widest mb-1">Pay at Salon</h4>
-                  <p className="text-xs font-light text-black/60 tracking-wider">Settle after your service.</p>
-                </div>
-                <div
+                  <h4 className="font-semibold text-sm text-gray-900 mb-0.5">Pay at Salon</h4>
+                  <p className="text-xs text-gray-500">Settle after your service.</p>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPaymentOption("pay-now")}
-                  className={`p-6 border cursor-pointer transition-colors ${paymentOption === "pay-now" ? "border-gold bg-gold/5" : "border-black/5 hover:border-black/20"}`}
+                  className={`p-4 rounded-xl border-2 text-left cursor-pointer transition-all duration-150 ${
+                    paymentOption === "pay-now"
+                      ? "border-gold bg-gold/5"
+                      : "border-gray-100 hover:border-gray-200 bg-gray-50"
+                  }`}
                 >
-                  <h4 className="font-bold uppercase tracking-widest mb-1">Pay Online</h4>
-                  <p className="text-xs font-light text-black/60 tracking-wider">Integration can be added later.</p>
-                </div>
+                  <h4 className="font-semibold text-sm text-gray-900 mb-0.5">Pay Online</h4>
+                  <p className="text-xs text-gray-500">Integration can be added later.</p>
+                </button>
               </div>
-            </div>
+            </StepCard>
 
+            {/* Submit */}
             <Button
               type="submit"
               size="lg"
@@ -483,7 +517,7 @@ const Booking = () => {
                 !guestPhone.trim() ||
                 !guestEmail.trim()
               }
-              className="w-full rounded-none bg-black hover:bg-gold text-white uppercase tracking-widest font-bold py-8 text-lg hover:-translate-y-1 transition-transform"
+              className="w-full rounded-full bg-gold hover:bg-gold/90 text-white font-semibold text-base h-14 transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 shadow-soft"
             >
               {bookingMutation.isPending ? (
                 <>
@@ -491,7 +525,7 @@ const Booking = () => {
                   Submitting…
                 </>
               ) : (
-                "Confirm booking"
+                "Confirm Booking"
               )}
             </Button>
           </form>

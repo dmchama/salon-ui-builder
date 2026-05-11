@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Star, Clock } from "lucide-react";
+import { MapPin, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface SalonCardProps {
@@ -13,39 +13,46 @@ interface SalonCardProps {
   isOpen: boolean;
 }
 
-const SalonCard = ({ slug, name, image, location, rating, services, priceRange, isOpen }: SalonCardProps) => (
+const SalonCard = ({ slug, name, image, location, rating, priceRange, isOpen }: SalonCardProps) => (
   <Link to={`/salon/${slug}`} className="group block">
-    <div className="bg-transparent transition-all duration-300">
-      <div className="relative h-64 overflow-hidden mb-4">
-        <img src={image} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out" />
+    <div className="bg-white rounded-2xl overflow-hidden shadow-soft hover:shadow-elevated hover:-translate-y-1.5 transition-all duration-300">
+      <div className="relative h-52 overflow-hidden">
+        <img
+          src={image}
+          alt={name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+        />
         <div className="absolute top-3 right-3">
-          <Badge variant={isOpen ? "default" : "secondary"} className={isOpen ? "bg-emerald-500 text-emerald-50 uppercase tracking-widest text-[10px] rounded-none px-2 py-1" : "bg-black/50 text-white uppercase tracking-widest text-[10px] rounded-none px-2 py-1 border-none"}>
+          <Badge
+            className={
+              isOpen
+                ? "bg-emerald-500/90 text-white text-[10px] rounded-full px-2.5 py-0.5 font-semibold border-none backdrop-blur-sm"
+                : "bg-black/50 text-white text-[10px] rounded-full px-2.5 py-0.5 font-semibold border-none backdrop-blur-sm"
+            }
+          >
             {isOpen ? "Open" : "Closed"}
           </Badge>
         </div>
       </div>
-      <div className="space-y-3 px-1">
-        <div className="flex items-start justify-between">
-          <h3 className="font-display font-bold text-lg uppercase tracking-widest text-current group-hover:text-gold transition-colors">{name}</h3>
-          <div className="flex items-center gap-1 text-gold">
-            <Star className="h-4 w-4 fill-current" />
-            <span className="text-sm font-bold">{rating}</span>
+      <div className="p-5 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-display font-semibold text-base tracking-tight text-gray-900 group-hover:text-gold transition-colors leading-snug">
+            {name}
+          </h3>
+          <div className="flex items-center gap-1 shrink-0">
+            <Star className="h-3.5 w-3.5 fill-gold text-gold" />
+            <span className="text-sm font-semibold text-gray-800">{rating}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 opacity-70">
-          <MapPin className="h-4 w-4" />
-          <span className="text-sm font-light uppercase tracking-wider">{location}</span>
+        <div className="flex items-center gap-1.5 text-gray-400">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-sm">{location}</span>
         </div>
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-current/10 mt-3">
-          {services.slice(0, 3).map((s) => (
-            <span key={s} className="text-[10px] font-bold uppercase tracking-widest opacity-50">{s}</span>
-          ))}
-        </div>
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-sm font-bold opacity-90">{priceRange}</span>
-          <div className="flex items-center gap-1 text-gold">
-            <span className="text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4">Book Now</span>
-          </div>
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <span className="text-sm font-medium text-gray-600">{priceRange}</span>
+          <span className="text-xs font-semibold text-gold group-hover:underline underline-offset-2">
+            Book Now →
+          </span>
         </div>
       </div>
     </div>

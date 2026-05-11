@@ -3,8 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Scissors, Check, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -89,89 +87,80 @@ const Register = () => {
     return [];
   };
 
+  const inputClass =
+    "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400";
+
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="pt-24 pb-16 flex items-center justify-center min-h-screen">
+      <div className="pt-20 min-h-screen flex items-center justify-center px-4 py-12">
         {step === 1 ? (
-          <Card className="w-full max-w-md shadow-elevated">
-            <CardHeader className="text-center space-y-2">
-              <div className="flex justify-center">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Scissors className="h-6 w-6 text-primary" />
+          <div className="w-full max-w-sm">
+            <div className="bg-white rounded-3xl shadow-elevated p-8 space-y-7">
+              {/* Header */}
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl gradient-gold flex items-center justify-center mx-auto shadow-soft">
+                  <Scissors className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-display text-2xl font-bold tracking-tight text-gray-900">
+                    Create Account
+                  </h1>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <div className="w-6 h-1.5 rounded-full bg-gold" />
+                    <div className="w-6 h-1.5 rounded-full bg-gray-200" />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">Step 1 of 2 — Account Details</p>
                 </div>
               </div>
-              <CardTitle className="font-display text-2xl">Create Your Account</CardTitle>
-              <p className="text-sm text-muted-foreground">Step 1 of 2 — Account Details</p>
-            </CardHeader>
-            <CardContent>
+
+              {/* Form */}
               <form onSubmit={handleAccountSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Doe"
-                    required
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 tracking-wide block">Full Name</label>
+                  <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" required className={inputClass} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    autoComplete="email"
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 tracking-wide block">Email</label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email" className={inputClass} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Password</Label>
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 tracking-wide block">Password</label>
+                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} autoComplete="new-password" className={inputClass} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Confirm Password</Label>
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    autoComplete="new-password"
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 tracking-wide block">Confirm Password</label>
+                  <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" required autoComplete="new-password" className={inputClass} />
                 </div>
-                <Button type="submit" className="w-full gap-2">
+                <Button type="submit" className="w-full rounded-xl h-12 bg-gold hover:bg-gold/90 text-white font-semibold text-sm transition-all duration-200 gap-2 mt-1">
                   Next: Choose Plan <ArrowRight className="h-4 w-4" />
                 </Button>
               </form>
-              <p className="text-sm text-muted-foreground text-center mt-4">
+
+              <p className="text-sm text-gray-500 text-center">
                 Already have an account?{" "}
-                <Link to="/login" className="text-primary font-medium hover:underline">
+                <Link to="/login" className="text-gold font-semibold hover:underline underline-offset-2">
                   Sign In
                 </Link>
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <div className="w-full max-w-4xl px-4">
-            <div className="text-center mb-8">
-              <h2 className="font-display text-2xl font-bold">Choose Your Plan</h2>
-              <p className="text-sm text-muted-foreground mt-1">Step 2 of 2 — Select a subscription plan</p>
+            {/* Header */}
+            <div className="text-center mb-10">
+              <h2 className="font-display text-3xl font-bold tracking-tight text-gray-900">Choose Your Plan</h2>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <div className="w-6 h-1.5 rounded-full bg-gold/40" />
+                <div className="w-6 h-1.5 rounded-full bg-gold" />
+              </div>
+              <p className="text-sm text-gray-500 mt-2">Step 2 of 2 — Select a subscription plan</p>
             </div>
 
             {plansLoading && (
-              <div className="flex justify-center py-16 gap-2 text-muted-foreground">
+              <div className="flex justify-center py-16 gap-2 text-gray-400">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Loading plans…
+                <span className="text-sm">Loading plans…</span>
               </div>
             )}
 
@@ -182,48 +171,52 @@ const Register = () => {
             )}
 
             {!plansLoading && !plansError && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {plans.map((plan) => {
                   const features = featureList(plan.features);
                   const isSelected = selectedPlanId === plan.id;
                   const professional = plan.name.toLowerCase() === "professional";
                   return (
-                    <Card
+                    <div
                       key={plan.id}
-                      className={`cursor-pointer transition-all relative ${
-                        isSelected ? "ring-2 ring-primary shadow-elevated" : "hover:shadow-soft"
+                      className={`relative bg-white rounded-2xl p-6 cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? "ring-2 ring-gold shadow-elevated scale-[1.02]"
+                          : "shadow-soft hover:shadow-elevated hover:-translate-y-1"
                       }`}
                       onClick={() => setSelectedPlanId(plan.id)}
                     >
                       {professional && (
-                        <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2">Popular</Badge>
+                        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-white rounded-full px-3 text-[10px] font-semibold border-none">
+                          Popular
+                        </Badge>
                       )}
-                      <CardContent className="p-6 pt-8">
-                        <h3 className="font-display text-lg font-bold">{plan.name}</h3>
+                      <div className="pt-2">
+                        <h3 className="font-display text-lg font-bold tracking-tight text-gray-900">{plan.name}</h3>
                         <div className="mt-2 mb-4">
-                          <span className="text-2xl font-bold font-display">
+                          <span className="text-3xl font-bold text-gray-900">
                             {formatMoney(plan.priceCents, plan.currency)}
                           </span>
-                          <span className="text-sm text-muted-foreground"> / month</span>
+                          <span className="text-sm text-gray-400 ml-1">/ month</span>
                         </div>
                         {plan.description && (
-                          <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
+                          <p className="text-sm text-gray-500 mb-5 leading-relaxed">{plan.description}</p>
                         )}
-                        <ul className="space-y-2">
+                        <ul className="space-y-2.5">
                           {features.map((f) => (
-                            <li key={f} className="flex items-start gap-2 text-sm">
-                              <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                            <li key={f} className="flex items-start gap-2.5 text-sm text-gray-700">
+                              <Check className="h-4 w-4 text-gold mt-0.5 shrink-0" />
                               <span>{f}</span>
                             </li>
                           ))}
                         </ul>
                         {isSelected && (
-                          <Badge variant="secondary" className="mt-4 w-full justify-center">
-                            Selected
-                          </Badge>
+                          <div className="mt-5 flex items-center justify-center gap-2 text-gold text-sm font-semibold">
+                            <Check className="h-4 w-4" /> Selected
+                          </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -233,12 +226,16 @@ const Register = () => {
               <Button
                 variant="outline"
                 onClick={() => setStep(1)}
-                className="gap-2"
+                className="gap-2 rounded-xl h-11 px-5 border-gray-200 text-gray-700 hover:bg-gray-50"
                 disabled={submitting}
               >
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
-              <Button onClick={handleComplete} className="gap-2" disabled={submitting || plansLoading || !selectedPlanId}>
+              <Button
+                onClick={handleComplete}
+                className="gap-2 rounded-xl h-11 px-6 bg-gold hover:bg-gold/90 text-white font-semibold"
+                disabled={submitting || plansLoading || !selectedPlanId}
+              >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Create Account <ArrowRight className="h-4 w-4" />
               </Button>

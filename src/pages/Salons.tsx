@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -49,7 +49,6 @@ const Salons = () => {
     return [...new Set(locs)].sort();
   }, [allPublished]);
 
-  /** Cards need service-derived tags — list endpoint has no services; keep discoverability via name/description search only */
   const filtered = salons;
 
   return (
@@ -57,71 +56,82 @@ const Salons = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen bg-white"
+      className="min-h-screen bg-background"
     >
       <Navbar />
-      <div className="pt-32 pb-24">
-        <div className="container">
-          <div className="text-center mb-16 space-y-4">
-            <h1 className="font-display text-4xl font-bold uppercase tracking-widest text-black">
-              Services & Salons
-            </h1>
-            <p className="text-black/60 font-light tracking-wide max-w-2xl mx-auto">
-              Discover elite professionals and luxurious environments.
-            </p>
-          </div>
 
-          <div className="flex flex-col sm:flex-row gap-6 mb-16 max-w-3xl mx-auto">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-black/40" />
-              <Input
-                placeholder="SEARCH SALON OR DESCRIPTION..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-12 rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus-visible:ring-0 focus-visible:border-gold text-sm tracking-widest py-6 bg-transparent h-auto"
-              />
-            </div>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-full sm:w-64 rounded-none border-t-0 border-x-0 border-b-2 border-black/10 focus:ring-0 text-sm tracking-widest uppercase py-6 bg-transparent h-auto">
-                <SelectValue placeholder="LOCATIONS" />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border border-black/5 rounded-sm">
-                <SelectItem value="all" className="uppercase tracking-widest text-xs">
-                  All Locations
+      {/* Page header */}
+      <div className="bg-zinc-950 pt-32 pb-16">
+        <div className="container text-center">
+          <p className="font-script text-gold text-4xl mb-2 -rotate-1">Find Your</p>
+          <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
+            Perfect Salon
+          </h1>
+          <p className="text-white/55 text-lg max-w-xl mx-auto leading-relaxed">
+            Discover elite professionals and luxurious environments.
+          </p>
+        </div>
+      </div>
+
+      <div className="container pt-10 pb-24">
+        {/* Search & filter */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-12 max-w-3xl mx-auto -mt-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search salons or descriptions…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-12 rounded-2xl border-0 bg-white h-14 shadow-elevated focus-visible:ring-2 focus-visible:ring-gold/30 focus-visible:ring-offset-0 text-sm text-gray-900 placeholder:text-gray-400"
+            />
+          </div>
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-full sm:w-52 rounded-2xl border-0 bg-white h-14 shadow-elevated focus:ring-2 focus:ring-gold/30 focus:ring-offset-0 text-sm px-4 text-gray-700">
+              <MapPin className="h-4 w-4 text-gray-400 mr-2 shrink-0" />
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-gray-100 shadow-elevated">
+              <SelectItem value="all" className="text-sm py-2.5">
+                All Locations
+              </SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc} value={loc} className="text-sm py-2.5">
+                  {loc}
                 </SelectItem>
-                {locations.map((loc) => (
-                  <SelectItem key={loc} value={loc} className="uppercase tracking-widest text-xs">
-                    {loc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isLoading && (
+          <div className="flex justify-center py-20 gap-2 text-gray-400">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Loading salons…</span>
           </div>
+        )}
 
-          {isLoading && (
-            <div className="flex justify-center py-20 gap-2 text-black/50">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="uppercase tracking-widest text-sm">Loading salons…</span>
-            </div>
-          )}
+        {isError && (
+          <div className="text-center py-20 text-gray-400 text-sm">
+            <p>Could not load salons. Check that the API is running.</p>
+          </div>
+        )}
 
-          {isError && (
-            <div className="text-center py-20 text-black/50 tracking-widest uppercase text-sm">
-              <p>Could not load salons. Check that the API is running.</p>
-            </div>
-          )}
+        {!isLoading && !isError && filtered.length === 0 && (
+          <div className="text-center py-20 text-gray-400 text-sm">
+            <p>No salons found. Owners must publish a salon before it appears here.</p>
+          </div>
+        )}
 
-          {!isLoading && !isError && filtered.length === 0 && (
-            <div className="text-center py-20 text-black/50 tracking-widest uppercase text-sm">
-              <p>No salons found. Owners must publish a salon before it appears here.</p>
-            </div>
-          )}
-
-          {!isLoading && !isError && filtered.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
-              {filtered.map((salon) => (
+        {!isLoading && !isError && filtered.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filtered.map((salon, i) => (
+              <motion.div
+                key={salon.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06, duration: 0.4 }}
+              >
                 <SalonCard
-                  key={salon.id}
                   slug={salon.slug}
                   name={salon.name}
                   image={PLACEHOLDER_IMAGE}
@@ -131,11 +141,12 @@ const Salons = () => {
                   priceRange="View pricing"
                   isOpen
                 />
-              ))}
-            </div>
-          )}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
+
       <Footer />
     </motion.div>
   );

@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Scissors, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { toast } from "sonner";
@@ -37,7 +35,6 @@ const Login = () => {
         navigate(redirectTo, { replace: true });
         return;
       }
-
       if (user.role === "SUPER_ADMIN") {
         navigate("/admin", { replace: true });
         return;
@@ -56,25 +53,33 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="pt-24 pb-16 flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md shadow-elevated">
-          <CardHeader className="text-center space-y-2">
-            <div className="flex justify-center">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Scissors className="h-6 w-6 text-primary" />
+      <div className="pt-20 min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm">
+          {/* Glass card */}
+          <div className="bg-white rounded-3xl shadow-elevated p-8 space-y-7">
+            {/* Header */}
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 rounded-2xl gradient-gold flex items-center justify-center mx-auto shadow-soft">
+                <Scissors className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h1 className="font-display text-2xl font-bold tracking-tight text-gray-900">
+                  Welcome Back
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Sign in to access your dashboard
+                </p>
               </div>
             </div>
-            <CardTitle className="font-display text-2xl">Welcome Back</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Super admin: website tools. Salon admin: your business dashboard.
-            </p>
-          </CardHeader>
-          <CardContent>
+
+            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Email</Label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 tracking-wide block">
+                  Email
+                </label>
                 <Input
                   type="email"
                   value={email}
@@ -82,10 +87,13 @@ const Login = () => {
                   placeholder="you@example.com"
                   required
                   autoComplete="email"
+                  className="rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Password</Label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 tracking-wide block">
+                  Password
+                </label>
                 <Input
                   type="password"
                   value={password}
@@ -93,20 +101,27 @@ const Login = () => {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
+                  className="rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={pending}>
+              <Button
+                type="submit"
+                className="w-full rounded-xl h-12 bg-gold hover:bg-gold/90 text-white font-semibold text-sm transition-all duration-200 mt-1"
+                disabled={pending}
+              >
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign In"}
               </Button>
             </form>
-            <p className="text-sm text-muted-foreground text-center mt-4">
+
+            {/* Footer link */}
+            <p className="text-sm text-gray-500 text-center">
               Run a salon?{" "}
-              <Link to="/register" className="text-primary font-medium hover:underline">
-                Salon admin signup
+              <Link to="/register" className="text-gold font-semibold hover:underline underline-offset-2">
+                Create an account
               </Link>
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
