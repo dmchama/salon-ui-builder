@@ -61,13 +61,12 @@ function displayPhone(b: SalonBookingRow) {
 
 const statusColors: Record<string, string> = {
   CONFIRMED: "bg-green-600 hover:bg-green-700 text-white border-0",
-  PENDING: "bg-yellow-500 hover:bg-yellow-600 text-white border-0",
   CANCELLED: "bg-red-500 hover:bg-red-600 text-white border-0",
   COMPLETED: "bg-slate-500 hover:bg-slate-600 text-white border-0",
   NO_SHOW: "bg-orange-600 hover:bg-orange-700 text-white border-0",
 };
 
-type FilterValue = "all" | "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+type FilterValue = "all" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 
 type Props = { salonId: string | null };
 
@@ -170,7 +169,6 @@ const BookingManager = ({ salonId }: Props) => {
           </SelectTrigger>
           <SelectContent className="rounded-none">
             <SelectItem value="all">All</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
             <SelectItem value="CONFIRMED">Confirmed</SelectItem>
             <SelectItem value="COMPLETED">Completed</SelectItem>
             <SelectItem value="CANCELLED">Cancelled</SelectItem>
@@ -220,28 +218,6 @@ const BookingManager = ({ salonId }: Props) => {
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
-                    {booking.status === "PENDING" && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-green-600"
-                          onClick={() => statusMutation.mutate({ id: booking.id, status: "CONFIRMED" })}
-                          title="Confirm"
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => setBookingToCancel(booking.id)}
-                          title="Cancel"
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
                     {booking.status === "CONFIRMED" && (
                       <>
                         <Button

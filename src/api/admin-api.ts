@@ -17,6 +17,7 @@ export type AdminStatsOverview = {
   activeSubscriptions: number;
   revenueThisMonthCents: number;
   revenueLastMonthCents: number;
+  revenueTotalCents: number;
 };
 
 export type BookingByStatus = { status: string; count: number };
@@ -211,6 +212,25 @@ export type AdminCampaignRequestDto = {
   salon: { id: string; name: string; slug: string };
   promoCode: { code: string; usageCount: number; active: boolean } | null;
 };
+
+export type AdminPromoCodeDto = {
+  id: string;
+  code: string;
+  salonName: string;
+  campaignName: string | null;
+  discountPct: number;
+  discountScope: string;
+  usageCount: number;
+  usageLimit: number | null;
+  validFrom: string | null;
+  validTo: string | null;
+  active: boolean;
+  createdAt: string;
+};
+
+export async function fetchAdminPromoCodes(): Promise<AdminPromoCodeDto[]> {
+  return apiRequest<AdminPromoCodeDto[]>("/admin/promo-codes", { method: "GET" });
+}
 
 export async function fetchAdminCampaignRequests(): Promise<AdminCampaignRequestDto[]> {
   return apiRequest<AdminCampaignRequestDto[]>("/admin/campaign-requests", { method: "GET" });

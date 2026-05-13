@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,37 +27,16 @@ import {
   AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
   WebsiteHeroSlide, WebsiteSettings,
   fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
-  CampaignService,
-  fetchCampaignCustomers, fetchCampaignServices, sendSmsCampaign,
+  AdminPromoCodeDto, fetchAdminPromoCodes,
 } from "@/api/admin-api";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
   fetchAdminPlans, createPlan, updatePlan, deletePlan,
 } from "@/api/plans-api";
 
-// ─── Mock Data ───
 
 
-const mockCoupons = [
-  { id: 1, code: "WELCOME20", discount: "20%", type: "percentage", usage: 145, limit: 500, expires: "2026-06-30", active: true },
-  { id: 2, code: "FLAT200", discount: "Rs. 200", type: "flat", usage: 78, limit: 200, expires: "2026-04-30", active: true },
-  { id: 3, code: "SUMMER50", discount: "50%", type: "percentage", usage: 200, limit: 200, expires: "2026-03-15", active: false },
-];
-
-const mockPromotions = [
-  { id: 1, title: "Summer Sale Banner", placement: "Homepage Hero", status: "active", startDate: "2026-03-01", endDate: "2026-04-30" },
-  { id: 2, title: "New Year Offer", placement: "Salon Listing", status: "scheduled", startDate: "2026-04-01", endDate: "2026-04-15" },
-  { id: 3, title: "Festival Discount", placement: "Homepage Banner", status: "expired", startDate: "2026-01-10", endDate: "2026-02-10" },
-];
-
-const mockSmsHistory = [
-  { id: 1, campaign: "March Offers", recipients: 450, sent: 448, delivered: 440, date: "2026-03-15", status: "completed" },
-  { id: 2, campaign: "Welcome Message", recipients: 32, sent: 32, delivered: 31, date: "2026-03-20", status: "completed" },
-  { id: 3, campaign: "Easter Promo", recipients: 500, sent: 0, delivered: 0, date: "2026-04-01", status: "scheduled" },
-];
-
-// ─── Sub-Components ───
+// â”€â”€â”€ Sub-Components â”€â”€â”€
 
 type PlanFormState = {
   name: string;
@@ -210,7 +189,7 @@ const SubscriptionManager = () => {
       {isLoading && (
         <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading plans…</span>
+          <span className="uppercase tracking-widest text-sm">Loading plansâ€¦</span>
         </div>
       )}
 
@@ -241,7 +220,7 @@ const SubscriptionManager = () => {
                 </div>
                 {p.description && <p className="text-xs text-muted-foreground">{p.description}</p>}
                 <p className="text-sm text-muted-foreground">
-                  {(p.features ?? []).length} feature{(p.features ?? []).length !== 1 ? "s" : ""} · {p.subscriberCount} subscriber{p.subscriberCount !== 1 ? "s" : ""}
+                  {(p.features ?? []).length} feature{(p.features ?? []).length !== 1 ? "s" : ""} Â· {p.subscriberCount} subscriber{p.subscriberCount !== 1 ? "s" : ""}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -272,7 +251,7 @@ const SubscriptionManager = () => {
       {/* Edit dialog */}
       <Dialog open={!!editPlan} onOpenChange={o => { if (!o) setEditPlan(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit Plan — {editPlan?.name}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit Plan â€” {editPlan?.name}</DialogTitle></DialogHeader>
           <PlanForm form={editForm} onChange={setEditForm} />
           <div className="flex items-center gap-3 pt-2">
             <Switch
@@ -408,7 +387,7 @@ const AccountManager = () => {
       {isLoading && (
         <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading accounts…</span>
+          <span className="uppercase tracking-widest text-sm">Loading accountsâ€¦</span>
         </div>
       )}
 
@@ -479,7 +458,7 @@ const AccountManager = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      {/* PENDING → Approve or Suspend */}
+                      {/* PENDING â†’ Approve or Suspend */}
                       {o.status === "pending" && (
                         <>
                           <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => approveMutation.mutate(o.id)} title="Approve account" className="text-green-600 hover:text-green-700 hover:bg-green-50">
@@ -490,13 +469,13 @@ const AccountManager = () => {
                           </Button>
                         </>
                       )}
-                      {/* ACTIVE → Suspend only */}
+                      {/* ACTIVE â†’ Suspend only */}
                       {o.status === "active" && (
                         <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => suspendMutation.mutate(o.id)} title="Suspend account" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                           {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
                         </Button>
                       )}
-                      {/* SUSPENDED → Activate only */}
+                      {/* SUSPENDED â†’ Activate only */}
                       {o.status === "suspended" && (
                         <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => activateMutation.mutate(o.id)} title="Reactivate account" className="text-primary hover:text-primary hover:bg-primary/10">
                           {activateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -520,32 +499,9 @@ function fmtLkr(cents: number) {
   return `Rs. ${(cents / 100).toLocaleString("en-LK")}`;
 }
 
-function pctChange(current: number, previous: number) {
-  if (previous === 0) return current > 0 ? "+100%" : "—";
-  const change = Math.round(((current - previous) / previous) * 100);
-  return `${change >= 0 ? "+" : ""}${change}% vs last month`;
-}
 
-const StatCard = ({
-  label, value, sub, icon: Icon, color, border,
-}: {
-  label: string; value: string; sub: string;
-  icon: React.ElementType; color: string; border?: string;
-}) => (
-  <Card className={border}>
-    <CardContent className="p-5">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">{label}</span>
-        <Icon className={`h-4 w-4 ${color}`} />
-      </div>
-      <div className={`text-2xl font-bold font-display ${color}`}>{value}</div>
-      <p className="text-xs text-muted-foreground mt-1 tracking-wide">{sub}</p>
-    </CardContent>
-  </Card>
-);
 
 const BookingStatusBadgeColor: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
   CONFIRMED: "bg-blue-100 text-blue-800",
   COMPLETED: "bg-green-100 text-green-800",
   CANCELLED: "bg-gray-100 text-gray-700",
@@ -563,7 +519,7 @@ const SystemStats = () => {
     return (
       <div className="flex items-center justify-center py-24 gap-3 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="uppercase tracking-widest text-sm">Loading statistics…</span>
+        <span className="uppercase tracking-widest text-sm">Loading statisticsâ€¦</span>
       </div>
     );
   }
@@ -581,9 +537,11 @@ const SystemStats = () => {
   }
 
   const { overview, bookingsByStatus, planDistribution, monthlyRevenue, monthlyBookings } = data;
+  const confirmedBookings = bookingsByStatus.find(b => b.status === "CONFIRMED")?.count ?? 0;
+  const completedBookings = bookingsByStatus.find(b => b.status === "COMPLETED")?.count  ?? 0;
+  const cancelledBookings = bookingsByStatus.find(b => b.status === "CANCELLED")?.count  ?? 0;
+  const noShowBookings    = bookingsByStatus.find(b => b.status === "NO_SHOW")?.count    ?? 0;
 
-  const totalBookingsChange = pctChange(overview.bookingsThisMonth, overview.bookingsLastMonth);
-  const revenueChange = pctChange(overview.revenueThisMonthCents, overview.revenueLastMonthCents);
 
   return (
     <div className="space-y-6">
@@ -596,35 +554,89 @@ const SystemStats = () => {
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Salons"
-          value={overview.totalSalons.toLocaleString()}
-          sub={`+${overview.newSalonsThisMonth} this month · ${overview.publishedSalons} published`}
-          icon={Store}
-          color="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          label="Total Users"
-          value={overview.totalUsers.toLocaleString()}
-          sub={`+${overview.newUsersThisMonth} this month · ${overview.salonAdmins} owners`}
-          icon={Users}
-          color="text-green-600 dark:text-green-400"
-        />
-        <StatCard
-          label="Revenue (This Month)"
-          value={fmtLkr(overview.revenueThisMonthCents)}
-          sub={revenueChange}
-          icon={DollarSign}
-          color="text-rose-500 dark:text-rose-400"
-        />
-        <StatCard
-          label="Active Bookings"
-          value={overview.activeBookings.toLocaleString()}
-          sub={`${overview.bookingsThisMonth} this month · ${totalBookingsChange}`}
-          icon={CalendarCheck}
-          color="text-amber-600 dark:text-amber-400"
-          border="border border-amber-400/60 shadow-sm"
-        />
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Total Salons</span>
+              <Store className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              <div className="flex flex-col items-center rounded-lg bg-blue-50 dark:bg-blue-950/30 py-2">
+                <span className="text-xl font-bold font-display text-blue-600 dark:text-blue-400">{overview.totalSalons}</span>
+                <span className="text-[9px] uppercase tracking-widest text-blue-500/70 mt-0.5 font-semibold">Total</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-green-50 dark:bg-green-950/30 py-2">
+                <span className="text-xl font-bold font-display text-green-600">{overview.publishedSalons}</span>
+                <span className="text-[9px] uppercase tracking-widest text-green-500/70 mt-0.5 font-semibold">Live</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-secondary py-2">
+                <span className="text-xl font-bold font-display text-muted-foreground">{overview.draftSalons}</span>
+                <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 mt-0.5 font-semibold">Draft</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-red-50 dark:bg-red-950/30 py-2">
+                <span className="text-xl font-bold font-display text-destructive">{overview.suspendedSalons}</span>
+                <span className="text-[9px] uppercase tracking-widest text-destructive/60 mt-0.5 font-semibold">Susp.</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Total Users</span>
+              <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col items-center rounded-lg bg-green-50 dark:bg-green-950/30 py-2">
+                <span className="text-xl font-bold font-display text-green-600 dark:text-green-400">{overview.totalUsers}</span>
+                <span className="text-[9px] uppercase tracking-widest text-green-500/70 mt-0.5 font-semibold">Total</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-secondary py-2">
+                <span className="text-xl font-bold font-display text-muted-foreground">{overview.salonAdmins}</span>
+                <span className="text-[9px] uppercase tracking-widest text-muted-foreground/60 mt-0.5 font-semibold">Salon Owners</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3 tracking-wide">+{overview.newUsersThisMonth} this month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Revenue</span>
+              <DollarSign className="h-4 w-4 text-rose-500 dark:text-rose-400" />
+            </div>
+            <div className="mt-1">
+              <div className={`text-2xl font-bold font-display text-rose-500 dark:text-rose-400`}>{fmtLkr(overview.revenueTotalCents)}</div>
+              <p className="text-xs text-muted-foreground mt-1 tracking-wide">All-time subscription revenue</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Bookings</span>
+              <CalendarCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col items-center rounded-lg bg-green-50 dark:bg-green-950/30 py-2">
+                <span className="text-xl font-bold font-display text-green-600">{confirmedBookings}</span>
+                <span className="text-[9px] uppercase tracking-widest text-green-500/70 mt-0.5 font-semibold">Confirmed</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-slate-100 dark:bg-slate-800/50 py-2">
+                <span className="text-xl font-bold font-display text-slate-600 dark:text-slate-300">{completedBookings}</span>
+                <span className="text-[9px] uppercase tracking-widest text-slate-400 mt-0.5 font-semibold">Completed</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-red-50 dark:bg-red-950/30 py-2">
+                <span className="text-xl font-bold font-display text-destructive">{cancelledBookings}</span>
+                <span className="text-[9px] uppercase tracking-widest text-destructive/60 mt-0.5 font-semibold">Cancelled</span>
+              </div>
+              <div className="flex flex-col items-center rounded-lg bg-orange-50 dark:bg-orange-950/30 py-2">
+                <span className="text-xl font-bold font-display text-orange-500">{noShowBookings}</span>
+                <span className="text-[9px] uppercase tracking-widest text-orange-400/70 mt-0.5 font-semibold">No Show</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Secondary KPIs */}
@@ -730,7 +742,7 @@ const SystemStats = () => {
                     <div className="h-full bg-rose-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-xs font-semibold w-28 text-right shrink-0">
-                    {m.revenueCents > 0 ? fmtLkr(m.revenueCents) : <span className="text-muted-foreground">—</span>}
+                    {m.revenueCents > 0 ? fmtLkr(m.revenueCents) : <span className="text-muted-foreground">â€”</span>}
                   </span>
                 </div>
               );
@@ -756,7 +768,7 @@ const SystemStats = () => {
                     <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-xs font-semibold w-12 text-right shrink-0">
-                    {m.count > 0 ? m.count : <span className="text-muted-foreground">—</span>}
+                    {m.count > 0 ? m.count : <span className="text-muted-foreground">â€”</span>}
                   </span>
                 </div>
               );
@@ -847,7 +859,7 @@ const SalonModeration = () => {
       {isLoading && (
         <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading salons…</span>
+          <span className="uppercase tracking-widest text-sm">Loading salonsâ€¦</span>
         </div>
       )}
 
@@ -896,7 +908,7 @@ const SalonModeration = () => {
                       <div className="text-xs text-muted-foreground">{s.owner.email}</div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {[s.city, s.country].filter(Boolean).join(", ") || "—"}
+                      {[s.city, s.country].filter(Boolean).join(", ") || "â€”"}
                     </TableCell>
                     <TableCell className="text-sm font-medium">{s.bookingCount}</TableCell>
                     <TableCell>
@@ -907,7 +919,7 @@ const SalonModeration = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        {/* DRAFT → Publish or Suspend */}
+                        {/* DRAFT â†’ Publish or Suspend */}
                         {s.status === "DRAFT" && (
                           <>
                             <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => publishMutation.mutate(s.id)} title="Publish salon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
@@ -918,13 +930,13 @@ const SalonModeration = () => {
                             </Button>
                           </>
                         )}
-                        {/* PUBLISHED → Suspend only */}
+                        {/* PUBLISHED â†’ Suspend only */}
                         {s.status === "PUBLISHED" && (
                           <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => suspendMutation.mutate(s.id)} title="Suspend salon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                             {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
                           </Button>
                         )}
-                        {/* SUSPENDED → Re-publish or move to Draft */}
+                        {/* SUSPENDED â†’ Re-publish or move to Draft */}
                         {s.status === "SUSPENDED" && (
                           <>
                             <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => publishMutation.mutate(s.id)} title="Re-publish salon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
@@ -1026,7 +1038,7 @@ const WebsiteManager = () => {
     return (
       <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="uppercase tracking-widest text-sm">Loading website settings…</span>
+        <span className="uppercase tracking-widest text-sm">Loading website settingsâ€¦</span>
       </div>
     );
   }
@@ -1210,378 +1222,70 @@ const WebsiteManager = () => {
   );
 };
 
-const PromotionManager = () => {
-  const [addOpen, setAddOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [placement, setPlacement] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const handleCreate = () => {
-    if (!title || !placement || !startDate || !endDate) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    toast.success("Promotion created");
-    setTitle(""); setPlacement(""); setStartDate(""); setEndDate("");
-    setAddOpen(false);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">Promotions</h2>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Promotion</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Create Promotion</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div><Label>Title</Label><Input placeholder="e.g. Summer Sale Banner" value={title} onChange={e => setTitle(e.target.value)} /></div>
-              <div><Label>Placement</Label>
-                <Select value={placement} onValueChange={setPlacement}>
-                  <SelectTrigger><SelectValue placeholder="Select placement" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Homepage Hero">Homepage Hero</SelectItem>
-                    <SelectItem value="Homepage Banner">Homepage Banner</SelectItem>
-                    <SelectItem value="Salon Listing">Salon Listing</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Start Date</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-                <div><Label>End Date</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
-              </div>
-              <Button className="w-full" onClick={handleCreate}>Create Promotion</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead><TableHead>Placement</TableHead><TableHead>Status</TableHead><TableHead>Duration</TableHead><TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockPromotions.map(p => (
-              <TableRow key={p.id}>
-                <TableCell className="font-medium">{p.title}</TableCell>
-                <TableCell>{p.placement}</TableCell>
-                <TableCell><Badge variant={p.status === "active" ? "default" : p.status === "scheduled" ? "secondary" : "outline"}>{p.status}</Badge></TableCell>
-                <TableCell className="text-sm text-muted-foreground">{p.startDate} → {p.endDate}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm"><Edit className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
-  );
-};
+const PromotionManager = () => (
+  <div className="flex flex-col items-center justify-center py-24 gap-3 text-center text-muted-foreground">
+    <Megaphone className="h-10 w-10 opacity-30" />
+    <p className="text-sm uppercase tracking-widest">Promotions feature coming soon</p>
+    <p className="text-xs max-w-xs">Banner and placement promotions are not yet supported in the backend.</p>
+  </div>
+);
 
 const CouponManager = () => {
-  const [addOpen, setAddOpen] = useState(false);
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">Coupon Management</h2>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild><Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Create Coupon</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Create Coupon</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div><Label>Coupon Code</Label><Input placeholder="e.g. SAVE30" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Discount Type</Label>
-                  <Select><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent><SelectItem value="percentage">Percentage</SelectItem><SelectItem value="flat">Flat Amount</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Discount Value</Label><Input type="number" placeholder="20" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Usage Limit</Label><Input type="number" placeholder="500" /></div>
-                <div><Label>Expiry Date</Label><Input type="date" /></div>
-              </div>
-              <Button className="w-full" onClick={() => { toast.success("Coupon created"); setAddOpen(false); }}>Create Coupon</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead><TableHead>Discount</TableHead><TableHead>Usage</TableHead><TableHead>Expires</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockCoupons.map(c => (
-              <TableRow key={c.id}>
-                <TableCell className="font-mono font-semibold">{c.code}</TableCell>
-                <TableCell>{c.discount}</TableCell>
-                <TableCell>{c.usage}/{c.limit}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{c.expires}</TableCell>
-                <TableCell><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Active" : "Expired"}</Badge></TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm"><Edit className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
-  );
-};
-
-const SEGMENTS = [
-  { value: "all", label: "All Customers" },
-  { value: "regular", label: "Regular Customers (2+ bookings)" },
-  { value: "last3months", label: "Booked in Last 3 Months" },
-  { value: "last6months", label: "Booked in Last 6 Months" },
-  { value: "last12months", label: "Booked in Last 12 Months" },
-];
-
-function buildMessage(opts: {
-  discountPct: number;
-  discountScope: string;
-  selectedServices: CampaignService[];
-  validFrom: string;
-  validTo: string;
-  customLink: string;
-}): string {
-  const { discountPct, discountScope, selectedServices, validFrom, validTo, customLink } = opts;
-  if (!discountPct) return "";
-  let serviceDesc = "all services";
-  if (discountScope === "specific_service" && selectedServices.length === 1) {
-    serviceDesc = selectedServices[0].name;
-  } else if (discountScope === "multiple_services" && selectedServices.length > 0) {
-    serviceDesc = selectedServices.map((s) => s.name).join(", ");
-  }
-  const period = validFrom && validTo ? ` Valid ${validFrom} to ${validTo}.` : "";
-  const link = customLink ? ` Book: ${customLink}` : "";
-  return `Hi! GlamBook Special: Get ${discountPct}% off ${serviceDesc} at our salons!${period}${link}`;
-}
-
-const SmsManager = () => {
-  const queryClient = useQueryClient();
-  const [composeOpen, setComposeOpen] = useState(false);
-
-  // Form state
-  const [campaignName, setCampaignName] = useState("");
-  const [segment, setSegment] = useState("all");
-  const [discountPct, setDiscountPct] = useState(10);
-  const [discountScope, setDiscountScope] = useState<"all_services" | "specific_service" | "multiple_services">("all_services");
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [validFrom, setValidFrom] = useState("");
-  const [validTo, setValidTo] = useState("");
-  const [customLink, setCustomLink] = useState("");
-  const [message, setMessage] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
-
-  // Fetch customers whenever segment or dialog changes
-  const { data: customersData, isFetching: loadingCustomers } = useQuery({
-    queryKey: ["campaignCustomers", segment],
-    queryFn: () => fetchCampaignCustomers(segment),
-    enabled: composeOpen,
+  const { data: codes = [], isLoading, isError, refetch, isFetching } = useQuery<AdminPromoCodeDto[]>({
+    queryKey: ["admin-promo-codes"],
+    queryFn: fetchAdminPromoCodes,
+    staleTime: 30_000,
   });
 
-  // Fetch all services once when dialog opens
-  const { data: allServices = [] } = useQuery({
-    queryKey: ["campaignServices"],
-    queryFn: fetchCampaignServices,
-    enabled: composeOpen,
-  });
+  const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString() : "—";
 
-  const selectedServices = allServices.filter((s) => selectedServiceIds.includes(s.id));
-
-  // Auto-generate message whenever offer fields change, but only if user hasn't typed manually
-  useEffect(() => {
-    const auto = buildMessage({ discountPct, discountScope, selectedServices, validFrom, validTo, customLink });
-    setMessage(auto);
-  }, [discountPct, discountScope, selectedServiceIds, validFrom, validTo, customLink, allServices]);
-
-  const { mutate: doSend, isPending: sending } = useMutation({
-    mutationFn: () => sendSmsCampaign({
-      campaignName,
-      segment,
-      discountPct,
-      discountScope,
-      serviceIds: selectedServiceIds,
-      validFrom,
-      validTo,
-      customLink,
-      message,
-      scheduledAt: scheduledAt || undefined,
-      recipientCount: customersData?.count ?? 0,
-    }),
-    onSuccess: (res) => {
-      toast.success(`Campaign scheduled for ${res.recipientCount} recipients`);
-      queryClient.invalidateQueries({ queryKey: ["campaignCustomers"] });
-      setComposeOpen(false);
-      // reset
-      setCampaignName(""); setSegment("all"); setDiscountPct(10);
-      setDiscountScope("all_services"); setSelectedServiceIds([]);
-      setValidFrom(""); setValidTo(""); setCustomLink(""); setMessage(""); setScheduledAt("");
-    },
-    onError: (e: any) => toast.error(e.message ?? "Failed to schedule campaign"),
-  });
-
-  const toggleService = (id: string) =>
-    setSelectedServiceIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-
-  const recipientCount = customersData?.count ?? 0;
+  if (isLoading) return <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm uppercase tracking-widest">Loading…</span></div>;
+  if (isError)  return <div className="flex flex-col items-center justify-center py-20 gap-3"><AlertTriangle className="h-8 w-8 text-destructive" /><Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button></div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">Promotion SMS Management</h2>
-        <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Campaign</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Create SMS Campaign</DialogTitle></DialogHeader>
-            <div className="space-y-5 pt-2 max-h-[75vh] overflow-y-auto pr-1">
-
-              {/* Campaign Name */}
-              <div>
-                <Label>Campaign Name</Label>
-                <Input placeholder="e.g. April Offers" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} />
-              </div>
-
-              {/* Target Audience */}
-              <div className="space-y-1">
-                <Label>Target Audience</Label>
-                <Select value={segment} onValueChange={setSegment}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SEGMENTS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 pt-0.5">
-                  {loadingCustomers
-                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Loading customers…</>
-                    : <><Users className="h-3 w-3" /> <span className="font-semibold">{recipientCount}</span> recipient{recipientCount !== 1 ? "s" : ""} matched</>}
-                </p>
-              </div>
-
-              {/* Discount */}
-              <div className="space-y-3 rounded-lg border p-3">
-                <p className="text-sm font-medium">Offer / Discount</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Discount %</Label>
-                    <Input type="number" min={1} max={100} value={discountPct}
-                      onChange={(e) => setDiscountPct(Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Apply To</Label>
-                    <Select value={discountScope} onValueChange={(v) => { setDiscountScope(v as any); setSelectedServiceIds([]); }}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all_services">All Services</SelectItem>
-                        <SelectItem value="specific_service">One Specific Service</SelectItem>
-                        <SelectItem value="multiple_services">Multiple Services</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Service picker */}
-                {discountScope !== "all_services" && (
-                  <div>
-                    <Label className="text-xs">Select Service{discountScope === "multiple_services" ? "s" : ""}</Label>
-                    <div className="mt-1 max-h-36 overflow-y-auto rounded border divide-y">
-                      {allServices.map((svc) => {
-                        const checked = selectedServiceIds.includes(svc.id);
-                        const isDisabled = discountScope === "specific_service" && selectedServiceIds.length === 1 && !checked;
-                        return (
-                          <label key={svc.id} className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-sm hover:bg-muted/50 ${isDisabled ? "opacity-40 pointer-events-none" : ""}`}>
-                            <Checkbox checked={checked} onCheckedChange={() => toggleService(svc.id)} />
-                            <span className="flex-1">{svc.name}</span>
-                            <span className="text-xs text-muted-foreground">{svc.salonName}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Offer Valid Period */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Offer Valid From</Label>
-                  <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Offer Valid To</Label>
-                  <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} />
-                </div>
-              </div>
-
-              {/* Custom Link */}
-              <div>
-                <Label>Custom Booking Link</Label>
-                <Input placeholder="https://glambook.lk/book" value={customLink} onChange={(e) => setCustomLink(e.target.value)} />
-              </div>
-
-              {/* Message */}
-              <div>
-                <Label>SMS Message</Label>
-                <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message auto-fills from offer details above…" />
-                <p className="text-xs text-muted-foreground mt-1">{message.length}/160 characters</p>
-              </div>
-
-              {/* Schedule */}
-              <div>
-                <Label>Schedule Send (optional)</Label>
-                <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
-                <p className="text-xs text-muted-foreground mt-1">Leave blank to send immediately</p>
-              </div>
-
-              <Button className="w-full" disabled={sending || !campaignName || !message || recipientCount === 0} onClick={() => doSend()}>
-                {sending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Scheduling…</> : `Send to ${recipientCount} Recipient${recipientCount !== 1 ? "s" : ""}`}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <h2 className="font-display text-lg font-semibold">Promo Codes</h2>
+        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2 text-xs uppercase tracking-widest">
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+        </Button>
       </div>
-
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Campaign</TableHead><TableHead>Recipients</TableHead><TableHead>Sent</TableHead><TableHead>Delivered</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockSmsHistory.map(s => (
-              <TableRow key={s.id}>
-                <TableCell className="font-medium">{s.campaign}</TableCell>
-                <TableCell>{s.recipients}</TableCell>
-                <TableCell>{s.sent}</TableCell>
-                <TableCell>{s.delivered}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{s.date}</TableCell>
-                <TableCell><Badge variant={s.status === "completed" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
+      {codes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-2 text-muted-foreground">
+          <Ticket className="h-8 w-8 opacity-30" />
+          <p className="text-sm uppercase tracking-widest">No promo codes yet</p>
+          <p className="text-xs">Codes are generated automatically when SMS campaigns are approved.</p>
+        </div>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Salon</TableHead>
+                <TableHead>Campaign</TableHead>
+                <TableHead>Discount</TableHead>
+                <TableHead>Usage</TableHead>
+                <TableHead>Valid To</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableHeader>
+            <TableBody>
+              {codes.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono font-semibold">{c.code}</TableCell>
+                  <TableCell className="text-sm">{c.salonName}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.campaignName ?? "—"}</TableCell>
+                  <TableCell>{c.discountPct}%</TableCell>
+                  <TableCell>{c.usageCount}{c.usageLimit ? `/${c.usageLimit}` : ""}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{fmt(c.validTo)}</TableCell>
+                  <TableCell><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Active" : "Inactive"}</Badge></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 };
@@ -1631,12 +1335,11 @@ const Admin = () => {
         <h1 className="font-display text-4xl font-bold mb-8 uppercase tracking-widest text-foreground">Admin Dashboard</h1>
 
         <div className="flex flex-wrap gap-3 mb-10">
-          <Button onClick={() => setTab("accounts")} className="bg-blue-600 hover:bg-blue-700 text-white tracking-widest uppercase text-xs h-9">Manage Shops</Button>
-          <Button onClick={() => setTab("moderation")} className="bg-yellow-500 hover:bg-yellow-600 text-white tracking-widest uppercase text-xs h-9 gap-2 shadow-sm rounded-none">
+          <Button onClick={() => setTab("moderation")} className="bg-yellow-500 hover:bg-yellow-600 text-white tracking-widest uppercase text-xs h-9 gap-2 shadow-sm">
             Review Requests <Badge className="bg-black/20 text-white border-0 hover:bg-black/30 px-1.5 py-0 h-5">1</Badge>
           </Button>
           <Button onClick={() => setTab("plans")} className="bg-cyan-500 hover:bg-cyan-600 text-white tracking-widest uppercase text-xs shadow-sm h-9">Subscription Plans</Button>
-          <Button onClick={() => setTab("accounts")} className="bg-slate-600 hover:bg-slate-700 text-white tracking-widest uppercase text-xs shadow-sm h-9">Manage Shop Types</Button>
+          <Button onClick={() => setTab("accounts")} className="bg-slate-600 hover:bg-slate-700 text-white tracking-widest uppercase text-xs shadow-sm h-9">Manage Salon Accounts</Button>
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
