@@ -243,3 +243,54 @@ export async function approveAdminCampaignRequest(id: string): Promise<{ message
 export async function rejectAdminCampaignRequest(id: string, note: string): Promise<{ message: string }> {
   return apiRequest(`/admin/campaign-requests/${id}/reject`, { method: "PATCH", body: JSON.stringify({ note }) });
 }
+
+// ── Overage Pricing & Invoices ────────────────────────────────────────────
+
+export async function fetchOveragePrice(): Promise<{ priceCents: number }> {
+  return apiRequest<{ priceCents: number }>("/admin/overage-price", { method: "GET" });
+}
+
+export async function saveOveragePrice(priceCents: number): Promise<{ priceCents: number }> {
+  return apiRequest<{ priceCents: number }>("/admin/overage-price", { method: "PATCH", body: JSON.stringify({ priceCents }) });
+}
+
+export type OverageInvoiceStatus = "DRAFT" | "SENT" | "PAID" | "CANCELLED";
+
+export type OverageInvoiceDto = {
+  id: string;
+  ownerId: string;
+  year: number;
+  month: number;
+  bookingLimit: number;
+  totalBookings: number;
+  overageCount: number;
+  overagePriceCents: number;
+  totalCents: number;
+  status: OverageInvoiceStatus;
+  sentAt: string | null;
+  paidAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  owner: { id: string; firstName: string | null; lastName: string | null; email: string };
+};
+
+export async function generateOverageInvoices(year: number, month: number): Promise<{ generated: number }> {
+  return apiRequest("/admin/overage-invoices/generate", { method: "POST", body: JSON.stringify({ year, month }) });
+}
+
+export async function fetchOverageInvoices(status?: OverageInvoiceStatus): Promise<OverageInvoiceDto[]> {
+  const qs = status ? `?status=${status}` : "";
+  return apiRequest<OverageInvoiceDto[]>(`/admin/overage-invoices${qs}`, { method: "GET" });
+}
+
+export async function sendOverageInvoice(id: string): Promise<OverageInvoiceDto> {
+  return apiRequest<OverageInvoiceDto>(`/admin/overage-invoices/${id}/send`, { method: "PATCH" });
+}
+
+export async function markOverageInvoicePaid(id: string): Promise<OverageInvoiceDto> {
+  return apiRequest<OverageInvoiceDto>(`/admin/overage-invoices/${id}/paid`, { method: "PATCH" });
+}
+
+export async function cancelOverageInvoice(id: string): Promise<OverageInvoiceDto> {
+  return apiRequest<OverageInvoiceDto>(`/admin/overage-invoices/${id}/cancel`, { method: "PATCH" });
+}

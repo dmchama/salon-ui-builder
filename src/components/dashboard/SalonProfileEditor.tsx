@@ -18,25 +18,24 @@ import {
   Clock,
   ImagePlus,
   Trash2,
+  GitBranch,
+  Star,
+  Plus,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   createSalon,
   fetchMySalons,
   publishSalon,
+  setDefaultBranch,
   updateSalon,
   type SalonRecord,
 } from "@/api/salon-api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { addGalleryItem, deleteGalleryItem, fetchGalleryForSalon } from "@/api/gallery-api";
 import { ApiError } from "@/api/http";
 import { slugify } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DAY_LABELS,
   DAY_ORDER,
@@ -84,7 +83,7 @@ function salonToForm(s: SalonRecord): DraftForm {
   };
 }
 
-const SalonProfileEditor = () => {
+const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
   const queryClient = useQueryClient();
   const slugEditedRef = useRef(false);
 
@@ -93,7 +92,7 @@ const SalonProfileEditor = () => {
     queryFn: fetchMySalons,
   });
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(salonId ?? null);
   const selectedSalon = useMemo(
     () => salons.find((s) => s.id === selectedId) ?? null,
     [salons, selectedId],
@@ -114,16 +113,15 @@ const SalonProfileEditor = () => {
     enabled: Boolean(selectedId),
   });
 
+  // Sync when parent changes selected branch
   useEffect(() => {
-    if (salons.length === 0) {
-      setSelectedId(null);
-      return;
-    }
+    if (salonId) { setSelectedId(salonId); return; }
+    if (salons.length === 0) { setSelectedId(null); return; }
     setSelectedId((prev) => {
       if (prev && salons.some((s) => s.id === prev)) return prev;
       return salons[0].id;
     });
-  }, [salons]);
+  }, [salonId, salons]);
 
   useEffect(() => {
     if (selectedSalon) {
@@ -237,6 +235,43 @@ const SalonProfileEditor = () => {
     },
     onError: (e: unknown) => {
       toast.error(e instanceof ApiError ? e.message : "Could not remove image");
+    },
+  });
+
+  // ── Branch management ────────────────────────────────────────────────────
+  const [addBranchOpen, setAddBranchOpen] = useState(false);
+  const [branchForm, setBranchForm] = useState({ name: "", slug: "", city: "", country: "" });
+  const branchSlugEditedRef = useRef(false);
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (id: string) => setDefaultBranch(id),
+    onSuccess: async (salon) => {
+      toast.success(`"${salon.name}" is now the default branch.`);
+      await invalidateSalons();
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof ApiError ? e.message : "Could not set default");
+    },
+  });
+
+  const addBranchMutation = useMutation({
+    mutationFn: () =>
+      createSalon({
+        name: branchForm.name.trim(),
+        slug: branchForm.slug.trim(),
+        city: branchForm.city.trim() || undefined,
+        country: branchForm.country.trim() || undefined,
+      }),
+    onSuccess: async (salon) => {
+      toast.success(`Branch "${salon.name}" created — fill in the profile and publish it.`);
+      setBranchForm({ name: "", slug: "", city: "", country: "" });
+      branchSlugEditedRef.current = false;
+      setAddBranchOpen(false);
+      await invalidateSalons();
+      setSelectedId(salon.id);
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof ApiError ? e.message : "Could not create branch");
     },
   });
 
@@ -395,24 +430,6 @@ const SalonProfileEditor = () => {
 
       {hasSalons && (
         <>
-          {salons.length > 1 && (
-            <div className="space-y-2 max-w-md">
-              <Label>Salon</Label>
-              <Select value={selectedId ?? undefined} onValueChange={setSelectedId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose salon" />
-                </SelectTrigger>
-                <SelectContent>
-                  {salons.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} ({s.status})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {selectedSalon && (
             <>
               <Card>
@@ -742,6 +759,193 @@ const SalonProfileEditor = () => {
           )}
         </>
       )}
+
+      {/* Branches section — shown whenever at least one branch exists */}
+      {hasSalons && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle className="font-display text-lg flex items-center gap-2">
+                <GitBranch className="h-4 w-4" /> Branches
+              </CardTitle>
+              <p className="text-sm text-muted-foreground font-normal mt-1">
+                Manage your locations. The default branch is shown first to customers.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-none text-xs uppercase tracking-widest shrink-0"
+              onClick={() => setAddBranchOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Branch
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {salons.map((branch) => {
+                const locationLine = [branch.city, branch.country].filter(Boolean).join(", ");
+                return (
+                  <div
+                    key={branch.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-sm transition-colors ${
+                      branch.id === selectedId
+                        ? "border-foreground/20 bg-muted/40"
+                        : "border-border"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="mt-0.5 shrink-0">
+                        {branch.isDefault ? (
+                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        ) : (
+                          <GitBranch className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{branch.name}</span>
+                          {branch.isDefault && (
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-sm">
+                              Default
+                            </span>
+                          )}
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] px-1.5 py-0 ${
+                              branch.status === "PUBLISHED"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : branch.status === "SUSPENDED"
+                                ? "bg-red-100 text-red-700 border-red-200"
+                                : "bg-secondary text-muted-foreground"
+                            }`}
+                          >
+                            {branch.status}
+                          </Badge>
+                        </div>
+                        {locationLine && (
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {locationLine}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">/salon/{branch.slug}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 pl-7 sm:pl-0">
+                      {branch.id !== selectedId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-8"
+                          onClick={() => setSelectedId(branch.id)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {branch.id === selectedId && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Editing
+                        </span>
+                      )}
+                      {!branch.isDefault && branch.status === "PUBLISHED" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-8 gap-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                          disabled={setDefaultMutation.isPending}
+                          onClick={() => setDefaultMutation.mutate(branch.id)}
+                        >
+                          {setDefaultMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Star className="h-3 w-3" />
+                          )}
+                          Set Default
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add branch dialog */}
+      <Dialog open={addBranchOpen} onOpenChange={setAddBranchOpen}>
+        <DialogContent className="rounded-none max-w-md">
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-widest text-sm">New Branch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Branch Name</Label>
+              <Input
+                placeholder="e.g. Glamour Studio Colombo"
+                value={branchForm.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setBranchForm((f) => ({
+                    ...f,
+                    name,
+                    slug: branchSlugEditedRef.current ? f.slug : slugify(name),
+                  }));
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>URL Slug</Label>
+              <Input
+                placeholder="glamour-studio-colombo"
+                value={branchForm.slug}
+                onChange={(e) => {
+                  branchSlugEditedRef.current = true;
+                  setBranchForm((f) => ({ ...f, slug: e.target.value }));
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Public URL: /salon/{branchForm.slug || "your-slug"}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input
+                  placeholder="Colombo"
+                  value={branchForm.city}
+                  onChange={(e) => setBranchForm((f) => ({ ...f, city: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Input
+                  placeholder="Sri Lanka"
+                  value={branchForm.country}
+                  onChange={(e) => setBranchForm((f) => ({ ...f, country: e.target.value }))}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Starts as <strong>Draft</strong>. Go to the branch profile to fill in details and publish.
+            </p>
+            <Button
+              className="w-full rounded-none uppercase tracking-widest text-xs"
+              disabled={
+                !branchForm.name.trim() ||
+                !branchForm.slug.trim() ||
+                addBranchMutation.isPending
+              }
+              onClick={() => addBranchMutation.mutate()}
+            >
+              {addBranchMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Create Branch
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <p className="text-xs text-muted-foreground border-t border-border pt-6">
         Published salons appear on the public listing and salon detail page with your hours, contact info, and gallery.

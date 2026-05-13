@@ -21,23 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { CalendarCheck, CheckCircle, XCircle, Clock, RefreshCw, Eye } from "lucide-react";
+import { CalendarCheck, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
 import { toast } from "sonner";
 import {
   fetchSalonBookings,
-  rescheduleBooking,
   updateBookingStatus,
   type SalonBookingRow,
 } from "@/api/bookings-api";
 import { ApiError } from "@/api/http";
 
-function combineLocalDateAndTime(dateStr: string, timeStr: string): Date {
-  const [y, mo, d] = dateStr.split("-").map(Number);
-  const [hh, mm] = timeStr.split(":").map(Number);
-  return new Date(y, (mo ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
-}
 
 function titleCaseStatus(status: string) {
   return status
@@ -74,9 +66,6 @@ const BookingManager = ({ salonId }: Props) => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterValue>("all");
   const [selectedBooking, setSelectedBooking] = useState<SalonBookingRow | null>(null);
-  const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleTime, setRescheduleTime] = useState("");
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
 
   const { data: bookings = [], isLoading } = useQuery({
@@ -102,47 +91,7 @@ const BookingManager = ({ salonId }: Props) => {
     },
   });
 
-  const rescheduleMutation = useMutation({
-    mutationFn: ({ id, startAt }: { id: string; startAt: string }) => rescheduleBooking(id, startAt),
-    onSuccess: () => {
-      invalidate();
-      setRescheduleOpen(false);
-      setSelectedBooking(null);
-      toast.success("Booking rescheduled");
-    },
-    onError: (err: unknown) => {
-      const msg = err instanceof ApiError ? err.message : "Could not reschedule";
-      toast.error(msg);
-    },
-  });
-
   const filtered = filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
-
-  const openReschedule = (b: SalonBookingRow) => {
-    const start = new Date(b.startAt);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    setRescheduleDate(
-      `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
-    );
-    setRescheduleTime(`${pad(start.getHours())}:${pad(start.getMinutes())}`);
-    setSelectedBooking(b);
-    setRescheduleOpen(true);
-  };
-
-  const handleReschedule = () => {
-    if (!selectedBooking || !rescheduleDate || !rescheduleTime) return;
-    const start = combineLocalDateAndTime(rescheduleDate, rescheduleTime);
-    if (start <= new Date()) {
-      toast.error("Choose a future date and time.");
-      return;
-    }
-    rescheduleMutation.mutate({
-      id: selectedBooking.id,
-      startAt: start.toISOString(),
-    });
-  };
-
-  const todayMin = new Date().toISOString().slice(0, 10);
 
   if (!salonId) {
     return (
@@ -223,15 +172,6 @@ const BookingManager = ({ salonId }: Props) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openReschedule(booking)}
-                          title="Reschedule"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
                           className="h-8 w-8 text-green-600"
                           onClick={() => statusMutation.mutate({ id: booking.id, status: "COMPLETED" })}
                           title="Mark complete"
@@ -262,7 +202,7 @@ const BookingManager = ({ salonId }: Props) => {
       </div>
 
       <Dialog
-        open={!!selectedBooking && !rescheduleOpen}
+        open={!!selectedBooking}
         onOpenChange={(open) => !open && setSelectedBooking(null)}
       >
         <DialogContent className="rounded-none">
@@ -328,55 +268,6 @@ const BookingManager = ({ salonId }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-        <DialogContent className="rounded-none">
-          <DialogHeader>
-            <DialogTitle className="font-display">Reschedule Booking</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Rescheduling for{" "}
-              <span className="font-medium text-foreground">
-                {selectedBooking ? displayCustomerName(selectedBooking) : ""}
-              </span>{" "}
-              — {selectedBooking?.service.name}
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>New date</Label>
-                <Input
-                  type="date"
-                  min={todayMin}
-                  className="rounded-none"
-                  value={rescheduleDate}
-                  onChange={(e) => setRescheduleDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>New time</Label>
-                <Input
-                  type="time"
-                  className="rounded-none"
-                  value={rescheduleTime}
-                  onChange={(e) => setRescheduleTime(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" className="rounded-none" onClick={() => setRescheduleOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="rounded-none"
-                onClick={handleReschedule}
-                disabled={rescheduleMutation.isPending}
-              >
-                Confirm reschedule
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={!!bookingToCancel} onOpenChange={(open) => !open && setBookingToCancel(null)}>
         <AlertDialogContent className="rounded-none">

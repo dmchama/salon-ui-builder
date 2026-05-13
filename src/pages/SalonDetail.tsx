@@ -1,12 +1,13 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Star, ArrowLeft, Loader2, Phone, Mail, Globe, Clock } from "lucide-react";
+import { MapPin, Star, ArrowLeft, Loader2, Phone, Mail, Globe, Clock, GitBranch } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { fetchPublicSalonBySlug } from "@/api/salon-api";
+import { fetchPublicSalonBySlug, fetchSalonBranches } from "@/api/salon-api";
 import { ApiError } from "@/api/http";
 import { formatBusinessHoursLines, mergeBusinessHoursFromApi } from "@/lib/business-hours";
 
@@ -24,14 +25,40 @@ function webHref(raw: string): string {
 
 const SalonDetail = () => {
   const { slug } = useParams<{ slug: string }>();
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
-  const { data: salon, isLoading, isError, error } = useQuery({
+  // Primary salon — always fetched by URL slug (for About + hero)
+  const { data: primarySalon, isLoading: primaryLoading, isError, error } = useQuery({
     queryKey: ["salon-public", slug],
     queryFn: () => fetchPublicSalonBySlug(slug!),
     enabled: Boolean(slug),
   });
 
-  if (isLoading) {
+  // All published branches for this owner
+  const { data: branches = [] } = useQuery({
+    queryKey: ["salon-branches", slug],
+    queryFn: () => fetchSalonBranches(slug!),
+    enabled: Boolean(slug),
+  });
+
+  // Auto-select the default branch on first load
+  useEffect(() => {
+    if (branches.length === 0 || selectedSlug !== null) return;
+    const def = branches.find((b) => b.isDefault);
+    if (def) setSelectedSlug(def.slug);
+  }, [branches, selectedSlug]);
+
+  // Active branch slug — default to URL slug until user picks one
+  const activeBranchSlug = selectedSlug ?? slug ?? "";
+
+  // Selected branch data (services, location, hours, contact)
+  const { data: activeBranch, isLoading: branchLoading } = useQuery({
+    queryKey: ["salon-public", activeBranchSlug],
+    queryFn: () => fetchPublicSalonBySlug(activeBranchSlug),
+    enabled: Boolean(activeBranchSlug),
+  });
+
+  if (primaryLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -44,7 +71,7 @@ const SalonDetail = () => {
     );
   }
 
-  if (isError || !salon) {
+  if (isError || !primarySalon) {
     const msg = error instanceof ApiError ? error.message : "Salon not found";
     return (
       <div className="min-h-screen bg-background">
@@ -64,6 +91,7 @@ const SalonDetail = () => {
     );
   }
 
+  const salon = activeBranch ?? primarySalon;
   const heroImage = salon.gallery[0]?.url ?? HERO_FALLBACK;
   const locationLine = [salon.address, salon.city, salon.country].filter(Boolean).join(" · ");
   const hoursLines = formatBusinessHoursLines(mergeBusinessHoursFromApi(salon.businessHours ?? null));
@@ -72,6 +100,8 @@ const SalonDetail = () => {
     Boolean(salon.contactEmail?.trim()) ||
     Boolean(salon.websiteUrl?.trim());
 
+  const showBranchSelector = branches.length > 1;
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
       <Navbar />
@@ -79,7 +109,7 @@ const SalonDetail = () => {
       {/* Hero */}
       <div className="pt-16">
         <div className="relative h-72 md:h-[520px] overflow-hidden">
-          <img src={heroImage} alt={salon.name} className="w-full h-full object-cover" />
+          <img src={heroImage} alt={primarySalon.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/40" />
           <div className="absolute bottom-0 left-0 right-0 container pb-10">
             <Link
@@ -89,7 +119,7 @@ const SalonDetail = () => {
               <ArrowLeft className="h-4 w-4" /> All Salons
             </Link>
             <h1 className="font-display text-4xl md:text-6xl font-bold text-white tracking-tight mb-4">
-              {salon.name}
+              {primarySalon.name}
             </h1>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5">
@@ -105,18 +135,56 @@ const SalonDetail = () => {
         </div>
       </div>
 
+      {/* Branch selector */}
+      {showBranchSelector && (
+        <div className="border-b border-gray-100 bg-white">
+          <div className="container py-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                <GitBranch className="h-3.5 w-3.5" /> Branch
+              </span>
+              {branches.map((branch) => {
+                const isActive = activeBranchSlug === branch.slug;
+                return (
+                  <button
+                    key={branch.slug}
+                    onClick={() => setSelectedSlug(branch.slug)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 border ${
+                      isActive
+                        ? "bg-gold text-white border-gold shadow-sm"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gold/60 hover:text-gold"
+                    }`}
+                  >
+                    {branch.city ? (
+                      <>
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        {branch.city}
+                      </>
+                    ) : (
+                      branch.name
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container py-14">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-14">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-12">
+            {/* About — always from primary salon */}
             <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
               <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 mb-2">About</h2>
               <div className="h-0.5 w-10 bg-gold mb-6 rounded-full" />
               <p className="text-gray-600 leading-relaxed text-base whitespace-pre-wrap">
-                {salon.description?.trim() || "No description yet."}
+                {primarySalon.description?.trim() || "No description yet."}
               </p>
             </motion.section>
 
+            {/* Services — from selected branch */}
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -124,7 +192,12 @@ const SalonDetail = () => {
             >
               <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 mb-2">Services</h2>
               <div className="h-0.5 w-10 bg-gold mb-7 rounded-full" />
-              {salon.services.length === 0 ? (
+              {branchLoading ? (
+                <div className="flex items-center gap-2 text-gray-400 py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Loading services…</span>
+                </div>
+              ) : salon.services.length === 0 ? (
                 <p className="text-gray-400 text-sm">Services will appear once the owner adds them.</p>
               ) : (
                 <div className="space-y-3">
@@ -146,7 +219,7 @@ const SalonDetail = () => {
                           {formatPrice(service.priceCents)}
                         </span>
                         <div className="mt-2">
-                          <Link to={`/booking/${salon.slug}?service=${service.id}`}>
+                          <Link to={`/booking/${activeBranchSlug}?service=${service.id}`}>
                             <Button
                               size="sm"
                               className="rounded-full h-8 px-5 bg-gold hover:bg-gold/90 text-white text-xs font-semibold transition-all"
@@ -190,7 +263,7 @@ const SalonDetail = () => {
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar — from selected branch */}
           <div className="space-y-6">
             {/* Book card */}
             <div className="bg-white rounded-2xl p-7 shadow-soft border border-gray-100/80 text-center">
@@ -200,7 +273,7 @@ const SalonDetail = () => {
               <p className="text-sm text-gray-500 mb-6 leading-relaxed">
                 Secure your spot with our team.
               </p>
-              <Link to={`/booking/${salon.slug}`}>
+              <Link to={`/booking/${activeBranchSlug}`}>
                 <Button className="w-full rounded-xl h-12 bg-gold hover:bg-gold/90 text-white font-semibold transition-all duration-200 hover:scale-[1.02]">
                   Book Appointment
                 </Button>

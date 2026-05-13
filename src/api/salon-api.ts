@@ -14,6 +14,7 @@ export type SalonRecord = {
   websiteUrl?: string | null;
   businessHours?: Record<string, unknown> | null;
   status: "DRAFT" | "PUBLISHED" | "SUSPENDED";
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -94,4 +95,24 @@ export async function fetchPublicSalonBySlug(slug: string): Promise<PublicSalonD
   return apiRequest<PublicSalonDetail>(`/salons/public/${encodeURIComponent(slug)}`, {
     method: "GET",
   });
+}
+
+export type SalonBranch = {
+  id: string;
+  name: string;
+  slug: string;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  isDefault: boolean;
+};
+
+export async function fetchSalonBranches(slug: string): Promise<SalonBranch[]> {
+  return apiRequest<SalonBranch[]>(`/salons/public/${encodeURIComponent(slug)}/branches`, {
+    method: "GET",
+  });
+}
+
+export async function setDefaultBranch(id: string): Promise<SalonRecord> {
+  return apiRequest<SalonRecord>(`/salons/${id}/default`, { method: "PATCH" });
 }

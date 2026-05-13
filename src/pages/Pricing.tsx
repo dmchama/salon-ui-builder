@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Check, Loader2, AlertTriangle, RefreshCw, GitBranch, CalendarCheck, Image, BarChart3, MessageSquare, Ticket, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { fetchSubscriptionPlans, SubscriptionPlanDto } from "@/api/plans-api";
+import { fetchSubscriptionPlans, SubscriptionPlanDto, PlanLimits } from "@/api/plans-api";
 
 function formatPrice(cents: number, currency: string): string {
   if (cents === 0) return "Free";
@@ -29,9 +29,41 @@ function intervalSuffix(months: number): string {
   return `/${months} months`;
 }
 
-function featureList(raw: unknown): string[] {
-  if (Array.isArray(raw) && raw.every((x) => typeof x === "string")) return raw as string[];
-  return [];
+type LimitFeature = { icon: React.ElementType; label: string; sub?: string };
+
+function deriveLimitFeatures(limits: PlanLimits | null): LimitFeature[] {
+  if (!limits) return [];
+  const items: LimitFeature[] = [];
+
+  // Branches
+  const branches = limits.maxSalons === -1 ? "Unlimited" : limits.maxSalons === 1 ? "1" : `Up to ${limits.maxSalons}`;
+  items.push({ icon: GitBranch, label: `${branches} salon branch${limits.maxSalons !== 1 ? "es" : ""}` });
+
+  // Monthly bookings
+  items.push({
+    icon: CalendarCheck,
+    label: `${limits.monthlyBookingLimit.toLocaleString()} bookings / month`,
+    sub: "Extra bookings charged at overage rate",
+  });
+
+  // Gallery
+  const gallery = limits.maxGalleryImagesPerSalon === -1 ? "Unlimited" : `${limits.maxGalleryImagesPerSalon}`;
+  items.push({ icon: Image, label: `${gallery} gallery images per branch` });
+
+  // Analytics
+  const analyticsMap: Record<string, string> = {
+    basic: "Basic analytics",
+    full: "Full analytics (trends, revenue, staff)",
+    full_export: "Full analytics + CSV export",
+  };
+  items.push({ icon: BarChart3, label: analyticsMap[limits.analyticsLevel] ?? "Analytics" });
+
+  // Always included
+  items.push({ icon: MessageSquare, label: "SMS campaigns" });
+  items.push({ icon: Ticket, label: "Promo codes & coupons" });
+  items.push({ icon: TrendingUp, label: "Overage bookings available", sub: "Pay only for what you use beyond quota" });
+
+  return items;
 }
 
 const PlanCard = ({
@@ -45,12 +77,14 @@ const PlanCard = ({
   isYearly: boolean;
   index: number;
 }) => {
-  const features = featureList(plan.features);
+  const limitFeatures = deriveLimitFeatures(plan.limits);
   const displayPrice = isYearly
     ? yearlyPrice(plan.priceCents, plan.currency)
     : formatPrice(plan.priceCents, plan.currency);
   const period =
     plan.priceCents === 0 ? "" : isYearly ? "/year" : intervalSuffix(plan.intervalMonths);
+  const muted = isPopular ? "text-white/45" : "text-gray-400";
+  const body  = isPopular ? "text-white/85" : "text-gray-700";
 
   return (
     <motion.div
@@ -74,9 +108,7 @@ const PlanCard = ({
       <div className="mb-8 pb-8 border-b border-current/10">
         <h3 className="font-display text-xl font-bold tracking-tight mb-2">{plan.name}</h3>
         {plan.description && (
-          <p className={`text-sm leading-relaxed ${isPopular ? "text-white/60" : "text-gray-500"}`}>
-            {plan.description}
-          </p>
+          <p className={`text-sm leading-relaxed ${muted}`}>{plan.description}</p>
         )}
         <div className="mt-8 flex items-baseline gap-1.5 h-10">
           <AnimatePresence mode="wait">
@@ -90,26 +122,34 @@ const PlanCard = ({
               {displayPrice}
             </motion.span>
           </AnimatePresence>
-          <span className={`text-sm ${isPopular ? "text-white/45" : "text-gray-400"}`}>{period}</span>
+          <span className={`text-sm ${muted}`}>{period}</span>
         </div>
         {isYearly && plan.priceCents > 0 && (
-          <p className={`text-xs mt-2 ${isPopular ? "text-white/45" : "text-gray-400"}`}>
-            Save 20% vs monthly billing
-          </p>
+          <p className={`text-xs mt-2 ${muted}`}>Save 20% vs monthly billing</p>
         )}
       </div>
 
-      <ul className="space-y-3.5 flex-1 mb-8">
-        {features.map((f) => (
-          <li key={f} className={`flex items-start gap-3 text-sm ${isPopular ? "text-white/85" : "text-gray-700"}`}>
-            <Check className="h-4 w-4 shrink-0 mt-0.5 text-gold" />
-            <span>{f}</span>
-          </li>
-        ))}
-        {features.length === 0 && (
-          <li className={`text-sm ${isPopular ? "text-white/45" : "text-gray-400"}`}>
-            Contact us for details
-          </li>
+      <ul className="space-y-4 flex-1 mb-8">
+        {limitFeatures.length > 0 ? (
+          limitFeatures.map((f) => (
+            <li key={f.label} className={`flex items-start gap-3 text-sm ${body}`}>
+              <span className={`mt-0.5 shrink-0 p-1 rounded-md ${isPopular ? "bg-white/10" : "bg-gray-100"}`}>
+                <f.icon className="h-3 w-3 text-gold" />
+              </span>
+              <span>
+                <span className="font-medium">{f.label}</span>
+                {f.sub && <span className={`block text-xs mt-0.5 ${muted}`}>{f.sub}</span>}
+              </span>
+            </li>
+          ))
+        ) : (
+          // Fallback to features array if no limits defined
+          (plan.features ?? []).map((f) => (
+            <li key={f} className={`flex items-start gap-3 text-sm ${body}`}>
+              <Check className="h-4 w-4 shrink-0 mt-0.5 text-gold" />
+              <span>{f}</span>
+            </li>
+          ))
         )}
       </ul>
 
@@ -140,6 +180,9 @@ const Pricing = () => {
     queryKey: ["subscription-plans"],
     queryFn: fetchSubscriptionPlans,
     staleTime: 60_000,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15_000),
+    refetchOnWindowFocus: true,
   });
 
   const popularIndex = plans.length === 1 ? 0 : Math.floor(plans.length / 2);

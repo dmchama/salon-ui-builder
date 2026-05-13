@@ -1,5 +1,12 @@
 import { apiRequest } from "./http";
 
+export type PlanLimits = {
+  maxSalons: number;
+  monthlyBookingLimit: number;
+  maxGalleryImagesPerSalon: number;
+  analyticsLevel: "basic" | "full" | "full_export";
+};
+
 export type SubscriptionPlanDto = {
   id: string;
   name: string;
@@ -8,6 +15,7 @@ export type SubscriptionPlanDto = {
   currency: string;
   intervalMonths: number;
   features: string[];
+  limits: PlanLimits | null;
   active: boolean;
 };
 

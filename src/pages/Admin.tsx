@@ -28,6 +28,10 @@ import {
   WebsiteHeroSlide, WebsiteSettings,
   fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
   AdminPromoCodeDto, fetchAdminPromoCodes,
+  OverageInvoiceDto, OverageInvoiceStatus,
+  fetchOveragePrice, saveOveragePrice,
+  fetchOverageInvoices, generateOverageInvoices,
+  sendOverageInvoice, markOverageInvoicePaid, cancelOverageInvoice,
 } from "@/api/admin-api";
 import {
   AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
@@ -501,6 +505,191 @@ function fmtLkr(cents: number) {
 
 
 
+// ── BillingManager ────────────────────────────────────────────────────────
+
+const invoiceStatusColors: Record<OverageInvoiceStatus, string> = {
+  DRAFT:     "bg-secondary text-muted-foreground",
+  SENT:      "bg-blue-100 text-blue-800",
+  PAID:      "bg-green-100 text-green-800",
+  CANCELLED: "bg-red-100 text-red-700",
+};
+
+const BillingManager = () => {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [genYear, setGenYear]   = useState(now.getFullYear());
+  const [genMonth, setGenMonth] = useState(now.getMonth() + 1);
+  const [filterStatus, setFilterStatus] = useState<OverageInvoiceStatus | "ALL">("ALL");
+  const [priceInput, setPriceInput]     = useState("");
+
+  const { data: priceData, isLoading: priceLoading } = useQuery<{ priceCents: number }>({
+    queryKey: ["overage-price"],
+    queryFn: fetchOveragePrice,
+  });
+
+  const { data: invoices = [], isLoading: invLoading, refetch: refetchInvoices } = useQuery<OverageInvoiceDto[]>({
+    queryKey: ["overage-invoices", filterStatus],
+    queryFn: () => fetchOverageInvoices(filterStatus === "ALL" ? undefined : filterStatus),
+  });
+
+  const savePriceMut = useMutation({
+    mutationFn: () => saveOveragePrice(Math.round(parseFloat(priceInput) * 100)),
+    onSuccess: () => { toast.success("Overage price updated"); qc.invalidateQueries({ queryKey: ["overage-price"] }); },
+    onError: () => toast.error("Failed to update price"),
+  });
+
+  const generateMut = useMutation({
+    mutationFn: () => generateOverageInvoices(genYear, genMonth),
+    onSuccess: (res) => { toast.success(`Generated ${res.generated} invoice(s)`); refetchInvoices(); },
+    onError: () => toast.error("Failed to generate invoices"),
+  });
+
+  const sendMut     = useMutation({ mutationFn: sendOverageInvoice,      onSuccess: () => { toast.success("Invoice sent"); refetchInvoices(); }, onError: () => toast.error("Failed to send") });
+  const paidMut     = useMutation({ mutationFn: markOverageInvoicePaid,  onSuccess: () => { toast.success("Marked as paid"); refetchInvoices(); }, onError: () => toast.error("Failed to update") });
+  const cancelMut   = useMutation({ mutationFn: cancelOverageInvoice,    onSuccess: () => { toast.success("Invoice cancelled"); refetchInvoices(); }, onError: () => toast.error("Failed to cancel") });
+
+  const fmtRs = (cents: number) => `Rs. ${(cents / 100).toLocaleString("en-LK", { minimumFractionDigits: 2 })}`;
+
+  return (
+    <div className="space-y-8">
+      {/* Overage price setting */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4 text-rose-500" /> Overage Rate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Charged per booking that exceeds a salon owner's monthly plan quota.
+            {!priceLoading && priceData && (
+              <span className="ml-2 font-semibold text-foreground">Current: {fmtRs(priceData.priceCents)} / booking</span>
+            )}
+          </p>
+          <div className="flex gap-3 max-w-xs">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rs.</span>
+              <Input
+                className="pl-9"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder={priceData ? (priceData.priceCents / 100).toString() : "0.00"}
+                value={priceInput}
+                onChange={e => setPriceInput(e.target.value)}
+              />
+            </div>
+            <Button onClick={() => savePriceMut.mutate()} disabled={!priceInput || savePriceMut.isPending}>
+              {savePriceMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Generate invoices */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="h-4 w-4 text-blue-500" /> Generate Overage Invoices</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">Scan all owners for the selected month and create invoices for any who exceeded their booking quota.</p>
+          <div className="flex gap-3 items-center flex-wrap">
+            <Select value={genMonth.toString()} onValueChange={v => setGenMonth(Number(v))}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTH_NAMES.map((m, i) => <SelectItem key={i} value={(i + 1).toString()}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input type="number" className="w-28" value={genYear} onChange={e => setGenYear(Number(e.target.value))} />
+            <Button onClick={() => generateMut.mutate()} disabled={generateMut.isPending}>
+              {generateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Generate
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Invoice list */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Overage Invoices</CardTitle>
+          <Select value={filterStatus} onValueChange={v => setFilterStatus(v as any)}>
+            <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All</SelectItem>
+              <SelectItem value="DRAFT">Draft</SelectItem>
+              <SelectItem value="SENT">Sent</SelectItem>
+              <SelectItem value="PAID">Paid</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent>
+          {invLoading ? (
+            <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : invoices.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No invoices found.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead className="text-right">Quota</TableHead>
+                  <TableHead className="text-right">Total Bookings</TableHead>
+                  <TableHead className="text-right">Overage</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map(inv => {
+                  const ownerName = [inv.owner.firstName, inv.owner.lastName].filter(Boolean).join(" ") || inv.owner.email;
+                  const period = `${MONTH_NAMES[inv.month - 1]} ${inv.year}`;
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell>
+                        <div className="font-medium text-sm">{ownerName}</div>
+                        <div className="text-xs text-muted-foreground">{inv.owner.email}</div>
+                      </TableCell>
+                      <TableCell className="text-sm">{period}</TableCell>
+                      <TableCell className="text-right text-sm">{inv.bookingLimit}</TableCell>
+                      <TableCell className="text-right text-sm">{inv.totalBookings}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-rose-600">+{inv.overageCount}</TableCell>
+                      <TableCell className="text-right text-sm font-bold">{fmtRs(inv.totalCents)}</TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] uppercase tracking-wider ${invoiceStatusColors[inv.status]}`}>{inv.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          {(inv.status === "DRAFT" || inv.status === "SENT") && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => sendMut.mutate(inv.id)} disabled={sendMut.isPending}>
+                              Send
+                            </Button>
+                          )}
+                          {inv.status === "SENT" && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-green-700 border-green-300" onClick={() => paidMut.mutate(inv.id)} disabled={paidMut.isPending}>
+                              Paid
+                            </Button>
+                          )}
+                          {(inv.status === "DRAFT" || inv.status === "SENT") && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30" onClick={() => cancelMut.mutate(inv.id)} disabled={cancelMut.isPending}>
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 const BookingStatusBadgeColor: Record<string, string> = {
   CONFIRMED: "bg-blue-100 text-blue-800",
   COMPLETED: "bg-green-100 text-green-800",
@@ -513,6 +702,12 @@ const SystemStats = () => {
     queryKey: ["admin-stats"],
     queryFn: fetchAdminStats,
     staleTime: 30_000,
+  });
+
+  const { data: plans = [] } = useQuery<AdminPlanDto[]>({
+    queryKey: ["admin-plans"],
+    queryFn: fetchAdminPlans,
+    staleTime: 60_000,
   });
 
   if (isLoading) {
@@ -640,7 +835,7 @@ const SystemStats = () => {
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-5 flex items-center gap-4">
             <Building2 className="h-8 w-8 text-blue-400/70 shrink-0" />
@@ -670,6 +865,54 @@ const SystemStats = () => {
               <div className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-1">Total Bookings</div>
               <div className="text-2xl font-bold font-display">{overview.totalBookings.toLocaleString()}</div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Plan Revenue Distribution card */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Revenue by Plan</span>
+              <CreditCard className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+            </div>
+            {planDistribution.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No active subscriptions yet.</p>
+            ) : (() => {
+              const rows = planDistribution.map(p => {
+                const plan = plans.find(pl => pl.name === p.name);
+                const revCents = plan ? p.count * plan.priceCents : 0;
+                return { ...p, revCents, plan };
+              });
+              const totalRevCents = rows.reduce((s, r) => s + r.revCents, 0) || 1;
+              const pillColors = [
+                "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300",
+                "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300",
+                "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300",
+                "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300",
+              ];
+              return (
+                <div className="space-y-2">
+                  {rows.map((r, idx) => {
+                    const revPct = Math.round((r.revCents / totalRevCents) * 100);
+                    return (
+                      <div key={r.name} className={`rounded-lg px-3 py-2 ${pillColors[idx % pillColors.length]}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider">{r.name}</span>
+                          <span className="text-sm font-bold font-display">Rs. {(r.revCents / 100).toLocaleString()}</span>
+                        </div>
+                        <div className="h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full bg-current rounded-full transition-all duration-500 opacity-50" style={{ width: `${revPct}%` }} />
+                        </div>
+                        <div className="flex justify-between mt-0.5">
+                          <span className="text-[10px] opacity-60">{r.count} subscriber{r.count !== 1 ? "s" : ""}</span>
+                          <span className="text-[10px] opacity-60">{revPct}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
@@ -1352,6 +1595,7 @@ const Admin = () => {
             <TabsTrigger value="promotions" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Megaphone className="h-3.5 w-3.5" /> Promotions</TabsTrigger>
             <TabsTrigger value="coupons" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><Ticket className="h-3.5 w-3.5" /> Coupons</TabsTrigger>
             <TabsTrigger value="campaigns" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><MessageSquare className="h-3.5 w-3.5" /> Campaigns</TabsTrigger>
+            <TabsTrigger value="billing" className="rounded-none border-b-2 bg-transparent px-0 pb-4 pt-2 uppercase tracking-widest text-[10px] md:text-xs font-bold transition-all data-[state=active]:bg-transparent data-[state=active]:border-gold data-[state=active]:text-foreground text-muted-foreground border-transparent hover:text-foreground/80 shadow-none whitespace-nowrap gap-2"><DollarSign className="h-3.5 w-3.5" /> Billing</TabsTrigger>
           </TabsList>
 
           <div className="bg-card border border-border shadow-sm p-8 min-h-[500px] rounded-sm">
@@ -1363,6 +1607,7 @@ const Admin = () => {
             <TabsContent value="promotions" className="mt-0 outline-none"><PromotionManager /></TabsContent>
             <TabsContent value="coupons" className="mt-0 outline-none"><CouponManager /></TabsContent>
             <TabsContent value="campaigns" className="mt-0 outline-none"><CampaignRequestManager /></TabsContent>
+            <TabsContent value="billing" className="mt-0 outline-none"><BillingManager /></TabsContent>
           </div>
         </Tabs>
       </div>

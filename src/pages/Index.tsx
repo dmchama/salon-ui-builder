@@ -8,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalonCard from "@/components/SalonCard";
 import { initialHeroSlides } from "@/data/mockSalons";
-import { fetchPublishedSalons } from "@/api/search-api";
+import { fetchPublishedSalons, groupSalonsByOwner } from "@/api/search-api";
 import { fetchPublicWebsiteSettings, WebsiteHeroSlide } from "@/api/admin-api";
 
 const FEATURED_COVER =
@@ -33,16 +33,6 @@ const SparkleGraphic = ({
   </svg>
 );
 
-function listLocation(
-  city: string | null,
-  country: string | null,
-  address: string | null
-): string {
-  const parts = [city, country].filter(Boolean);
-  if (parts.length) return parts.join(", ");
-  if (address?.trim()) return address.trim();
-  return "Location on profile";
-}
 
 const Index = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -51,7 +41,7 @@ const Index = () => {
     queryKey: ["public-salons", "featured"],
     queryFn: () => fetchPublishedSalons(),
   });
-  const featuredSalons = publishedSalons.slice(0, 4);
+  const featuredSalons = groupSalonsByOwner(publishedSalons).slice(0, 4);
 
   const { data: websiteSettings } = useQuery({
     queryKey: ["website-settings-public"],
@@ -272,15 +262,12 @@ const Index = () => {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredSalons.map((salon) => (
+            {featuredSalons.map((group) => (
               <SalonCard
-                key={salon.id}
-                slug={salon.slug}
-                name={salon.name}
+                key={group.ownerId}
+                group={group}
                 image={FEATURED_COVER}
-                location={listLocation(salon.city, salon.country, salon.address)}
                 rating={5}
-                services={["Browse profile"]}
                 priceRange="View pricing"
                 isOpen
               />

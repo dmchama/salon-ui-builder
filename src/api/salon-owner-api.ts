@@ -35,14 +35,29 @@ export type OwnerDashboardSalon = SalonRecord & {
   _count: { bookings: number; services: number };
 };
 
+export type PlanLimits = {
+  maxSalons: number;                        // -1 = unlimited
+  monthlyBookingLimit: number;
+  maxGalleryImagesPerSalon: number;         // -1 = unlimited
+  analyticsLevel: 'basic' | 'full' | 'full_export';
+};
+
 export type OwnerDashboard = {
   salons: OwnerDashboardSalon[];
   subscription: OwnerSubscription | null;
   insights: OwnerDashboardInsights;
+  planLimits: PlanLimits;
 };
 
 export async function fetchOwnerDashboard(): Promise<OwnerDashboard> {
   return apiRequest<OwnerDashboard>("/salon-owners/me/dashboard", { method: "GET" });
+}
+
+export async function fetchOwnerInsights(salonId: string): Promise<OwnerDashboardInsights> {
+  return apiRequest<OwnerDashboardInsights>(
+    `/salon-owners/me/insights?salonId=${encodeURIComponent(salonId)}`,
+    { method: "GET" },
+  );
 }
 
 // ── SMS Campaign (salon-scoped) ───────────────────────────────────────────

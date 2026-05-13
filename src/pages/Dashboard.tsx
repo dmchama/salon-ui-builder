@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarCheck, Users, Scissors, BarChart3, LogOut, Loader2 } from "lucide-react";
+import { CalendarCheck, Users, Scissors, BarChart3, LogOut, Loader2, Plus, GitBranch, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { createSalon, setDefaultBranch } from "@/api/salon-api";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -21,14 +26,184 @@ import TechnicianManager from "@/components/dashboard/TechnicianManager";
 import PromotionSMS from "@/components/dashboard/PromotionSMS";
 import CouponManager from "@/components/dashboard/CouponManager";
 import { clearAuth, getAccessToken, getStoredUser } from "@/lib/auth-storage";
-import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchOwnerDashboard,
+  fetchOwnerInsights,
   type OwnerDashboardInsights,
 } from "@/api/salon-owner-api";
 
 const COLORS = ["bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-red-500", "bg-purple-500", "bg-cyan-500"];
+
+// ── Branch Selector + Add Branch ────────────────────────────────────────────
+
+type BranchSelectorProps = {
+  salons: { id: string; name: string; status: string; isDefault: boolean; _count: { bookings: number } }[];
+  selectedSalonId: string | null;
+  onSelect: (id: string) => void;
+  onCreated: (salonId: string) => void;
+  maxSalons: number;
+  planName: string | null;
+};
+
+function slugify(s: string) {
+  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+}
+
+function BranchSelector({ salons, selectedSalonId, onSelect, onCreated, maxSalons, planName }: BranchSelectorProps) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+
+  const defaultMut = useMutation({
+    mutationFn: (id: string) => setDefaultBranch(id),
+    onSuccess: (salon) => {
+      qc.invalidateQueries({ queryKey: ["owner-dashboard"] });
+      toast.success(`"${salon.name}" is now the default branch.`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to set default"),
+  });
+
+  const selectedSalon = salons.find((s) => s.id === selectedSalonId);
+  const isSelectedDefault = selectedSalon?.isDefault ?? false;
+
+  const canAddBranch = maxSalons === -1 || salons.length < maxSalons;
+
+  const createMut = useMutation({
+    mutationFn: () => createSalon({ name: name.trim(), slug: slug.trim(), city: city.trim() || undefined, country: country.trim() || undefined }),
+    onSuccess: async (salon) => {
+      await qc.invalidateQueries({ queryKey: ["owner-dashboard"] });
+      qc.invalidateQueries({ queryKey: ["salons", "mine"] });
+      setOpen(false);
+      setName(""); setSlug(""); setCity(""); setCountry("");
+      onCreated(salon.id);
+      toast.success(`Branch "${salon.name}" created — now fill in the profile and publish it.`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to create branch"),
+  });
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+      <div className="space-y-2 flex-1">
+        <div className="flex items-center gap-3">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Active Branch</p>
+          <span className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded bg-secondary text-muted-foreground">
+            {salons.length} / {maxSalons === -1 ? "∞" : maxSalons} branches
+            {planName && ` · ${planName}`}
+          </span>
+        </div>
+        {salons.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Create your first branch to get started.</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Select value={selectedSalonId ?? ""} onValueChange={onSelect}>
+              <SelectTrigger className="w-[300px] rounded-none">
+                <SelectValue placeholder="Choose branch" />
+              </SelectTrigger>
+              <SelectContent className="rounded-none">
+                {salons.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    <span className="flex items-center gap-2">
+                      <GitBranch className="h-3 w-3 opacity-50" />
+                      {s.name}
+                      {s.isDefault && (
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      )}
+                      <span className={`text-[10px] uppercase font-bold ml-1 ${s.status === "PUBLISHED" ? "text-green-600" : s.status === "SUSPENDED" ? "text-red-500" : "text-muted-foreground"}`}>
+                        {s.status}
+                      </span>
+                      <span className="text-muted-foreground text-xs">· {s._count.bookings} bookings</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedSalonId && !isSelectedDefault && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-none text-xs gap-1.5 h-9 border-amber-300 text-amber-700 hover:bg-amber-50"
+                disabled={defaultMut.isPending}
+                onClick={() => defaultMut.mutate(selectedSalonId)}
+                title="Make this the default branch shown to customers"
+              >
+                {defaultMut.isPending
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Star className="h-3 w-3" />}
+                Set as Default
+              </Button>
+            )}
+            {isSelectedDefault && (
+              <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium px-2">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> Default
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {canAddBranch ? (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2 rounded-none text-xs uppercase tracking-widest h-9 self-end">
+              <Plus className="h-3.5 w-3.5" /> Add Branch
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-none max-w-md">
+            <DialogHeader>
+              <DialogTitle className="uppercase tracking-widest text-sm">New Branch</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <Label>Branch Name</Label>
+                <Input
+                  placeholder="e.g. Glamour Studio Colombo"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setSlug(slugify(e.target.value)); }}
+                />
+              </div>
+              <div>
+                <Label>URL Slug</Label>
+                <Input
+                  placeholder="glamour-studio-colombo"
+                  value={slug}
+                  onChange={e => setSlug(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Public URL: /salons/{slug || "your-slug"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>City</Label>
+                  <Input placeholder="Colombo" value={city} onChange={e => setCity(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Country</Label>
+                  <Input placeholder="Sri Lanka" value={country} onChange={e => setCountry(e.target.value)} />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">The branch starts in <strong>Draft</strong> status. An admin must publish it before customers can book.</p>
+              <Button
+                className="w-full rounded-none uppercase tracking-widest text-xs"
+                disabled={!name.trim() || !slug.trim() || createMut.isPending}
+                onClick={() => createMut.mutate()}
+              >
+                {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create Branch
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <div className="text-xs text-muted-foreground self-end pb-1">
+          Branch limit reached · upgrade plan to add more
+        </div>
+      )}
+    </div>
+  );
+}
 
 function formatRs(cents: number) {
   return `Rs. ${(cents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -126,6 +301,12 @@ const Dashboard = () => {
     enabled: Boolean(getAccessToken()),
   });
 
+  const { data: insights } = useQuery({
+    queryKey: ["owner-insights", selectedSalonId],
+    queryFn: () => fetchOwnerInsights(selectedSalonId!),
+    enabled: Boolean(selectedSalonId),
+  });
+
   useEffect(() => {
     const token = getAccessToken();
     const user = getStoredUser();
@@ -158,7 +339,6 @@ const Dashboard = () => {
   };
 
   const selectedSalon = data?.salons.find((s) => s.id === selectedSalonId) ?? null;
-  const insights = data?.insights;
   const pendingForSalon = selectedSalonId
     ? (insights?.pendingBySalonId[selectedSalonId] ?? 0)
     : 0;
@@ -248,31 +428,14 @@ const Dashboard = () => {
 
         {data && !isLoading && (
           <>
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-8">
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
-                  Salon for bookings & services
-                </p>
-                {data.salons.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Create a salon under <strong>Salon Profile</strong> to manage bookings and services.
-                  </p>
-                ) : (
-                  <Select value={selectedSalonId ?? ""} onValueChange={setSelectedSalonId}>
-                    <SelectTrigger className="w-[280px] rounded-none">
-                      <SelectValue placeholder="Choose salon" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none">
-                      {data.salons.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} · {s._count.bookings} bookings
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
+            <BranchSelector
+              salons={data.salons}
+              selectedSalonId={selectedSalonId}
+              onSelect={setSelectedSalonId}
+              onCreated={(id) => { setSelectedSalonId(id); setTab("profile"); }}
+              maxSalons={data.planLimits.maxSalons}
+              planName={data.subscription?.plan.name ?? null}
+            />
 
             <div className="flex flex-wrap gap-3 mb-10">
               <Button
@@ -356,7 +519,7 @@ const Dashboard = () => {
                   <BookingManager salonId={selectedSalonId} />
                 </TabsContent>
                 <TabsContent value="profile" className="mt-0 outline-none">
-                  <SalonProfileEditor />
+                  <SalonProfileEditor salonId={selectedSalonId} />
                 </TabsContent>
                 <TabsContent value="services" className="mt-0 outline-none">
                   <ServiceManager salonId={selectedSalonId} />

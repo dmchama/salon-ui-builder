@@ -13,17 +13,11 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalonCard from "@/components/SalonCard";
-import { fetchPublishedSalons } from "@/api/search-api";
+import { fetchPublishedSalons, groupSalonsByOwner } from "@/api/search-api";
 
 const PLACEHOLDER_IMAGE =
   "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&h=400&fit=crop";
 
-function formatLocation(city: string | null, country: string | null, address: string | null): string {
-  const parts = [city, country].filter(Boolean);
-  if (parts.length) return parts.join(", ");
-  if (address?.trim()) return address.trim();
-  return "Location on profile";
-}
 
 const Salons = () => {
   const [search, setSearch] = useState("");
@@ -49,7 +43,7 @@ const Salons = () => {
     return [...new Set(locs)].sort();
   }, [allPublished]);
 
-  const filtered = salons;
+  const grouped = useMemo(() => groupSalonsByOwner(salons), [salons]);
 
   return (
     <motion.div
@@ -116,28 +110,25 @@ const Salons = () => {
           </div>
         )}
 
-        {!isLoading && !isError && filtered.length === 0 && (
+        {!isLoading && !isError && grouped.length === 0 && (
           <div className="text-center py-20 text-gray-400 text-sm">
             <p>No salons found. Owners must publish a salon before it appears here.</p>
           </div>
         )}
 
-        {!isLoading && !isError && filtered.length > 0 && (
+        {!isLoading && !isError && grouped.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map((salon, i) => (
+            {grouped.map((group, i) => (
               <motion.div
-                key={salon.id}
+                key={group.ownerId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06, duration: 0.4 }}
               >
                 <SalonCard
-                  slug={salon.slug}
-                  name={salon.name}
+                  group={group}
                   image={PLACEHOLDER_IMAGE}
-                  location={formatLocation(salon.city, salon.country, salon.address)}
                   rating={5}
-                  services={["Browse profile"]}
                   priceRange="View pricing"
                   isOpen
                 />

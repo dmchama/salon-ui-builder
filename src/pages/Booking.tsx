@@ -10,11 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, CheckCircle, Loader2, Tag } from "lucide-react";
+import { ArrowLeft, CheckCircle, GitBranch, Loader2, MapPin, Tag } from "lucide-react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { fetchPublicSalonBySlug } from "@/api/salon-api";
+import { fetchPublicSalonBySlug, fetchSalonBranches } from "@/api/salon-api";
 import { createGuestBooking, validatePromoCode, type BookingCreated, type PromoCodeInfo } from "@/api/bookings-api";
 import { ApiError } from "@/api/http";
 import { toast } from "sonner";
@@ -28,8 +28,33 @@ function combineLocalDateAndTime(dateStr: string, timeStr: string): Date {
 const inputClass =
   "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400";
 
+const inputErrorClass =
+  "rounded-xl border border-red-300 bg-red-50 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-0 placeholder:text-gray-400";
+
 const selectTriggerClass =
   "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-700 focus:ring-2 focus:ring-gold/40 focus:ring-offset-0";
+
+const StepCard = ({ num, title, children }: { num: number; title: string; children: React.ReactNode }) => (
+  <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100/80 space-y-5">
+    <div className="flex items-center gap-3">
+      <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+        <span className="text-xs font-bold text-gold">{num}</span>
+      </div>
+      <h3 className="font-display font-semibold text-base tracking-tight text-gray-900">{title}</h3>
+    </div>
+    {children}
+  </div>
+);
+
+function validatePhone(v: string) {
+  return /^[+\d][\d\s\-()]{6,19}$/.test(v.trim());
+}
+function validateEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+function validateName(v: string) {
+  return v.trim().length >= 2;
+}
 
 const Booking = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -37,11 +62,21 @@ const Booking = () => {
   const preselectedService = searchParams.get("service") || "";
   const promoCodeParam = searchParams.get("promo") || "";
 
-  const { data: salon, isLoading, isError, error } = useQuery({
-    queryKey: ["salon-public", slug],
-    queryFn: () => fetchPublicSalonBySlug(slug!),
+  const [selectedBranchSlug, setSelectedBranchSlug] = useState(slug ?? "");
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["salon-branches", slug],
+    queryFn: () => fetchSalonBranches(slug!),
     enabled: Boolean(slug),
   });
+
+  const { data: salon, isLoading, isError, error } = useQuery({
+    queryKey: ["salon-public", selectedBranchSlug],
+    queryFn: () => fetchPublicSalonBySlug(selectedBranchSlug),
+    enabled: Boolean(selectedBranchSlug),
+  });
+
+  const showBranchStep = branches.length > 1;
 
   const [selectedService, setSelectedService] = useState(preselectedService);
   const [date, setDate] = useState("");
@@ -54,6 +89,8 @@ const Booking = () => {
   const [confirmedBooking, setConfirmedBooking] = useState<BookingCreated | null>(null);
   const [promoInfo, setPromoInfo] = useState<PromoCodeInfo | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [touched, setTouched] = useState({ name: false, phone: false, email: false });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const technicians = salon?.technicians ?? [];
 
@@ -63,7 +100,8 @@ const Booking = () => {
       preselectedService && salon.services.some((s) => s.id === preselectedService)
         ? preselectedService
         : "";
-    if (valid) setSelectedService(valid);
+    setSelectedService(valid);
+    setSelectedTechnician("");
   }, [salon, preselectedService]);
 
   useEffect(() => {
@@ -116,8 +154,15 @@ const Booking = () => {
     },
   });
 
+  const nameError = (touched.name || submitAttempted) && !validateName(guestName) ? "Please enter your full name" : null;
+  const phoneError = (touched.phone || submitAttempted) && !validatePhone(guestPhone) ? "Enter a valid phone number (e.g. +94 77 123 4567)" : null;
+  const emailError = (touched.email || submitAttempted) && !validateEmail(guestEmail) ? "Enter a valid email address" : null;
+  const contactValid = validateName(guestName) && validatePhone(guestPhone) && validateEmail(guestEmail);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitAttempted(true);
+    if (!contactValid) return;
     bookingMutation.mutate();
   };
 
@@ -157,8 +202,12 @@ const Booking = () => {
   const service = salon.services.find((s) => s.id === selectedService);
   const locationLine = [salon.address, salon.city, salon.country].filter(Boolean).join(" · ");
   const showTechStep = technicians.length > 0;
-  const contactStep = showTechStep ? 4 : 3;
-  const paymentStep = showTechStep ? 5 : 4;
+  const offset = showBranchStep ? 1 : 0;
+  const serviceStep = 1 + offset;
+  const scheduleStep = 2 + offset;
+  const techStep = 3 + offset;
+  const contactStep = (showTechStep ? 4 : 3) + offset;
+  const paymentStep = (showTechStep ? 5 : 4) + offset;
 
   const preferredTechRow = confirmedBooking
     ? confirmedBooking.technician ??
@@ -178,9 +227,9 @@ const Booking = () => {
           </motion.div>
 
           <div className="space-y-2">
-            <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900">Booking Received</h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight text-gray-900">Booking Confirmed!</h1>
             <p className="text-gray-500 leading-relaxed">
-              Your request at <strong className="font-semibold text-gray-900">{salon.name}</strong> is pending confirmation.
+              Your appointment at <strong className="font-semibold text-gray-900">{salon.name}</strong> is confirmed.
             </p>
             <p className="text-xs text-gray-400">
               Reference <span className="font-mono text-gray-600">{confirmedBooking.id}</span>
@@ -267,17 +316,6 @@ const Booking = () => {
     );
   }
 
-  const StepCard = ({ num, title, children }: { num: number; title: string; children: React.ReactNode }) => (
-    <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100/80 space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-          <span className="text-xs font-bold text-gold">{num}</span>
-        </div>
-        <h3 className="font-display font-semibold text-base tracking-tight text-gray-900">{title}</h3>
-      </div>
-      {children}
-    </div>
-  );
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
@@ -304,8 +342,50 @@ const Booking = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Step 1: Service */}
-            <StepCard num={1} title="Select Service">
+            {/* Step 1 (optional): Select Branch */}
+            {showBranchStep && (
+              <StepCard num={1} title="Select Branch">
+                <div className="grid grid-cols-1 gap-3">
+                  {branches.map((branch) => {
+                    const branchLocation = [branch.city, branch.country].filter(Boolean).join(", ");
+                    const isSelected = branch.slug === selectedBranchSlug;
+                    return (
+                      <button
+                        key={branch.id}
+                        type="button"
+                        onClick={() => setSelectedBranchSlug(branch.slug)}
+                        className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150 ${
+                          isSelected
+                            ? "border-gold bg-gold/5"
+                            : "border-gray-100 hover:border-gray-200 bg-gray-50"
+                        }`}
+                      >
+                        <span className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${isSelected ? "bg-gold/10" : "bg-gray-200"}`}>
+                          <GitBranch className={`h-3.5 w-3.5 ${isSelected ? "text-gold" : "text-gray-400"}`} />
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-semibold text-sm text-gray-900">{branch.name}</span>
+                          {branchLocation && (
+                            <span className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {branchLocation}
+                            </span>
+                          )}
+                        </span>
+                        {isSelected && (
+                          <span className="shrink-0 mt-0.5 text-[10px] font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded-full">
+                            Selected
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </StepCard>
+            )}
+
+            {/* Service step */}
+            <StepCard num={serviceStep} title="Select Service">
               {salon.services.length === 0 ? (
                 <p className="text-sm text-gray-500">No bookable services yet. Please contact the salon.</p>
               ) : (
@@ -377,10 +457,10 @@ const Booking = () => {
               )}
             </StepCard>
 
-            {/* Step 2: Schedule */}
+            {/* Schedule step */}
             {selectedService && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <StepCard num={2} title="Schedule">
+                <StepCard num={scheduleStep} title="Schedule">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-gray-500 block">Date</label>
@@ -408,10 +488,10 @@ const Booking = () => {
               </motion.div>
             )}
 
-            {/* Step 3: Technician (optional) */}
+            {/* Technician step (optional) */}
             {selectedService && showTechStep && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <StepCard num={3} title="Preferred Technician">
+                <StepCard num={techStep} title="Preferred Technician">
                   <Select
                     value={selectedTechnician || "__any__"}
                     onValueChange={(v) => setSelectedTechnician(v === "__any__" ? "" : v)}
@@ -432,7 +512,7 @@ const Booking = () => {
               </motion.div>
             )}
 
-            {/* Step 4: Contact */}
+            {/* Contact step */}
             <StepCard num={contactStep} title="Your Contact">
               <div className="space-y-4">
                 <div className="space-y-1.5">
@@ -440,23 +520,26 @@ const Booking = () => {
                   <Input
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
+                    onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                     placeholder="Jane Doe"
-                    required
                     autoComplete="name"
-                    className={inputClass}
+                    className={nameError ? inputErrorClass : inputClass}
                   />
+                  {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-500 block">Phone</label>
                     <Input
+                      type="tel"
                       value={guestPhone}
                       onChange={(e) => setGuestPhone(e.target.value)}
+                      onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
                       placeholder="+94 77 123 4567"
-                      required
                       autoComplete="tel"
-                      className={inputClass}
+                      className={phoneError ? inputErrorClass : inputClass}
                     />
+                    {phoneError && <p className="text-xs text-red-500 mt-1">{phoneError}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-500 block">Email</label>
@@ -464,11 +547,12 @@ const Booking = () => {
                       type="email"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
+                      onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                       placeholder="you@example.com"
-                      required
                       autoComplete="email"
-                      className={inputClass}
+                      className={emailError ? inputErrorClass : inputClass}
                     />
+                    {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
                   </div>
                 </div>
               </div>
@@ -513,9 +597,7 @@ const Booking = () => {
                 !selectedService ||
                 !date ||
                 !time ||
-                !guestName.trim() ||
-                !guestPhone.trim() ||
-                !guestEmail.trim()
+                !contactValid
               }
               className="w-full rounded-full bg-gold hover:bg-gold/90 text-white font-semibold text-base h-14 transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 shadow-soft"
             >
