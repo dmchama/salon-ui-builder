@@ -10,6 +10,8 @@ export type PublishedSalonListItem = {
   address: string | null;
   city: string | null;
   country: string | null;
+  coverImageUrl: string | null;
+  listingImageUrl: string | null;
   status: string;
   isDefault: boolean;
 };
@@ -20,6 +22,8 @@ export type SalonGroup = {
   name: string;
   /** Slug of the first/primary branch — used for linking */
   primarySlug: string;
+  /** Listing image URL from the primary branch — shown on cards */
+  listingImageUrl: string | null;
   branches: { name: string; slug: string; city: string | null; country: string | null }[];
 };
 
@@ -43,6 +47,7 @@ export function groupSalonsByOwner(salons: PublishedSalonListItem[]): SalonGroup
         ownerId: salon.ownerId,
         name: salon.name,
         primarySlug: salon.slug,
+        listingImageUrl: salon.listingImageUrl,
         branches: [],
       });
     }
@@ -53,9 +58,10 @@ export function groupSalonsByOwner(salons: PublishedSalonListItem[]): SalonGroup
       city: salon.city,
       country: salon.country,
     });
-    // Promote default branch to primarySlug
+    // Promote default branch to primarySlug and use its listing image
     if (salon.isDefault) {
       group.primarySlug = salon.slug;
+      group.listingImageUrl = salon.listingImageUrl;
     }
   }
   for (const group of map.values()) {

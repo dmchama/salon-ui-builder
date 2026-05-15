@@ -127,7 +127,7 @@ const Salons = () => {
               >
                 <SalonCard
                   group={group}
-                  image={PLACEHOLDER_IMAGE}
+                  image={group.listingImageUrl ?? PLACEHOLDER_IMAGE}
                   rating={5}
                   priceRange="View pricing"
                   isOpen

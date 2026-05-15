@@ -92,7 +92,7 @@ const SalonDetail = () => {
   }
 
   const salon = activeBranch ?? primarySalon;
-  const heroImage = salon.gallery[0]?.url ?? HERO_FALLBACK;
+  const heroImage = salon.coverImageUrl ?? salon.gallery[0]?.url ?? HERO_FALLBACK;
   const locationLine = [salon.address, salon.city, salon.country].filter(Boolean).join(" · ");
   const hoursLines = formatBusinessHoursLines(mergeBusinessHoursFromApi(salon.businessHours ?? null));
   const hasContact =

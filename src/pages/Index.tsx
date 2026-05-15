@@ -266,7 +266,7 @@ const Index = () => {
               <SalonCard
                 key={group.ownerId}
                 group={group}
-                image={FEATURED_COVER}
+                image={group.listingImageUrl ?? FEATURED_COVER}
                 rating={5}
                 priceRange="View pricing"
                 isOpen

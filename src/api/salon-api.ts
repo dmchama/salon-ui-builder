@@ -13,6 +13,8 @@ export type SalonRecord = {
   contactEmail?: string | null;
   websiteUrl?: string | null;
   businessHours?: Record<string, unknown> | null;
+  coverImageUrl?: string | null;
+  listingImageUrl?: string | null;
   status: "DRAFT" | "PUBLISHED" | "SUSPENDED";
   isDefault: boolean;
   createdAt: string;
@@ -115,4 +117,17 @@ export async function fetchSalonBranches(slug: string): Promise<SalonBranch[]> {
 
 export async function setDefaultBranch(id: string): Promise<SalonRecord> {
   return apiRequest<SalonRecord>(`/salons/${id}/default`, { method: "PATCH" });
+}
+
+export async function uploadSalonListingImage(id: string, file: File): Promise<SalonRecord> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiRequest<SalonRecord>(`/salons/${id}/listing-image`, { method: "PATCH", body: form });
+}
+
+export async function setSalonCoverImage(id: string, galleryItemId: string | null): Promise<SalonRecord> {
+  return apiRequest<SalonRecord>(`/salons/${id}/cover`, {
+    method: "PATCH",
+    body: JSON.stringify({ galleryItemId }),
+  });
 }

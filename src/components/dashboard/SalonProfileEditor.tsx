@@ -22,6 +22,7 @@ import {
   Star,
   Plus,
   CheckCircle2,
+  Image,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -29,7 +30,9 @@ import {
   fetchMySalons,
   publishSalon,
   setDefaultBranch,
+  setSalonCoverImage,
   updateSalon,
+  uploadSalonListingImage,
   type SalonRecord,
 } from "@/api/salon-api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -236,6 +239,45 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
     },
     onError: (e: unknown) => {
       toast.error(e instanceof ApiError ? e.message : "Could not remove image");
+    },
+  });
+
+  const setCoverMutation = useMutation({
+    mutationFn: ({ itemId }: { itemId: string | null }) => {
+      if (!selectedSalon) throw new Error("No salon");
+      return setSalonCoverImage(selectedSalon.id, itemId);
+    },
+    onSuccess: async (_, { itemId }) => {
+      toast.success(itemId ? "Cover image set." : "Cover image cleared.");
+      await invalidateSalons();
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof ApiError ? e.message : "Could not update cover image");
+    },
+  });
+
+  const [listingFile, setListingFile] = useState<File | null>(null);
+  const [listingPreview, setListingPreview] = useState<string | null>(null);
+  const [listingFileError, setListingFileError] = useState<string | null>(null);
+  const listingFileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadListingMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedSalon) throw new Error("No salon");
+      if (!listingFile) throw new Error("Please select an image");
+      return uploadSalonListingImage(selectedSalon.id, listingFile);
+    },
+    onSuccess: async () => {
+      setListingFile(null);
+      setListingPreview(null);
+      setListingFileError(null);
+      if (listingFileInputRef.current) listingFileInputRef.current.value = "";
+      toast.success("Listing image updated.");
+      await invalidateSalons();
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Could not upload image";
+      toast.error(msg);
     },
   });
 
@@ -670,10 +712,74 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
               <Card>
                 <CardHeader>
                   <CardTitle className="font-display text-lg flex items-center gap-2">
+                    <Image className="h-4 w-4" /> Listing Image
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground font-normal">
+                    The image shown on your salon card across the website — home page and salon listing.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4 max-w-xl">
+                  {selectedSalon?.listingImageUrl && (
+                    <div className="w-full max-w-xs h-44 rounded-md overflow-hidden border border-border">
+                      <img
+                        src={selectedSalon.listingImageUrl}
+                        alt="Listing"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Upload new image</Label>
+                    <Input
+                      ref={listingFileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setListingFileError(null);
+                        if (!file) { setListingFile(null); setListingPreview(null); return; }
+                        if (file.size > 5 * 1024 * 1024) {
+                          setListingFileError("Image must be smaller than 5 MB");
+                          setListingFile(null); setListingPreview(null);
+                          e.target.value = "";
+                          return;
+                        }
+                        setListingFile(file);
+                        setListingPreview(URL.createObjectURL(file));
+                      }}
+                    />
+                    {listingFileError && <p className="text-xs text-destructive">{listingFileError}</p>}
+                    <p className="text-xs text-muted-foreground">JPEG, PNG or WebP · max 5 MB</p>
+                  </div>
+                  {listingPreview && (
+                    <div className="w-32 h-32 rounded-md overflow-hidden border border-border">
+                      <img src={listingPreview} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadListingMutation.isPending || !listingFile}
+                    onClick={() => uploadListingMutation.mutate()}
+                    className="gap-2 w-fit"
+                  >
+                    {uploadListingMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Image className="h-4 w-4" />
+                    )}
+                    {selectedSalon?.listingImageUrl ? "Replace listing image" : "Upload listing image"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-display text-lg flex items-center gap-2">
                     <ImagePlus className="h-4 w-4" /> Gallery
                   </CardTitle>
                   <p className="text-sm text-muted-foreground font-normal">
-                    Upload images directly. They are stored on Cloudinary and the URL is saved automatically. First image is used as the hero on your public page.
+                    Upload images directly. Mark one as the cover — it will be used as the hero on your public page.
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -740,40 +846,74 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                       <p className="text-sm text-muted-foreground">No gallery images yet.</p>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {galleryItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex gap-3 border border-border p-3 rounded-sm items-start"
-                        >
-                          <div className="w-20 h-20 shrink-0 bg-muted overflow-hidden rounded-sm">
-                            <img
-                              src={item.url}
-                              alt={item.caption ?? ""}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.opacity = "0.3";
-                              }}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <p className="text-xs text-muted-foreground truncate">{item.url}</p>
-                            {item.caption && (
-                              <p className="text-xs font-medium truncate">{item.caption}</p>
-                            )}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0 text-destructive"
-                            disabled={deleteGalleryMutation.isPending}
-                            onClick={() => deleteGalleryMutation.mutate(item.id)}
-                            aria-label="Remove image"
+                      {galleryItems.map((item) => {
+                        const isCover = selectedSalon?.coverImageUrl === item.url;
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex gap-3 border p-3 rounded-sm items-start transition-colors ${
+                              isCover ? "border-amber-400 bg-amber-50/40" : "border-border"
+                            }`}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="relative w-20 h-20 shrink-0 bg-muted overflow-hidden rounded-sm">
+                              <img
+                                src={item.url}
+                                alt={item.caption ?? ""}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.opacity = "0.3";
+                                }}
+                              />
+                              {isCover && (
+                                <div className="absolute inset-0 flex items-end justify-center pb-1">
+                                  <span className="text-[9px] font-bold uppercase tracking-widest bg-amber-400 text-white px-1.5 py-0.5 rounded-sm leading-none">
+                                    Cover
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <p className="text-xs text-muted-foreground truncate">{item.url}</p>
+                              {item.caption && (
+                                <p className="text-xs font-medium truncate">{item.caption}</p>
+                              )}
+                              <div className="pt-1">
+                                {isCover ? (
+                                  <button
+                                    type="button"
+                                    className="text-[10px] text-amber-600 hover:text-destructive transition-colors"
+                                    disabled={setCoverMutation.isPending}
+                                    onClick={() => setCoverMutation.mutate({ itemId: null })}
+                                  >
+                                    Clear cover
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                                    disabled={setCoverMutation.isPending}
+                                    onClick={() => setCoverMutation.mutate({ itemId: item.id })}
+                                  >
+                                    <Image className="h-3 w-3" />
+                                    Set as cover
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="shrink-0 text-destructive"
+                              disabled={deleteGalleryMutation.isPending}
+                              onClick={() => deleteGalleryMutation.mutate(item.id)}
+                              aria-label="Remove image"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </CardContent>
