@@ -10,17 +10,16 @@ export async function fetchGalleryForSalon(salonId: string): Promise<GalleryItem
   });
 }
 
-export type AddGalleryPayload = {
-  salonId: string;
-  url: string;
-  caption?: string;
-};
-
-export async function addGalleryItem(payload: AddGalleryPayload): Promise<GalleryItemRecord & { sortOrder?: number }> {
-  return apiRequest(`/gallery`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export async function uploadGalleryImage(
+  salonId: string,
+  file: File,
+  caption?: string,
+): Promise<GalleryItemRecord & { sortOrder?: number }> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("salonId", salonId);
+  if (caption?.trim()) form.append("caption", caption.trim());
+  return apiRequest(`/gallery/upload`, { method: "POST", body: form });
 }
 
 export async function deleteGalleryItem(itemId: string): Promise<void> {

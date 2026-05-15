@@ -33,7 +33,7 @@ import {
   type SalonRecord,
 } from "@/api/salon-api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { addGalleryItem, deleteGalleryItem, fetchGalleryForSalon } from "@/api/gallery-api";
+import { uploadGalleryImage, deleteGalleryItem, fetchGalleryForSalon } from "@/api/gallery-api";
 import { ApiError } from "@/api/http";
 import { slugify } from "@/lib/utils";
 import {
@@ -104,8 +104,11 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
     defaultBusinessHours(),
   );
 
-  const [galleryUrl, setGalleryUrl] = useState("");
+  const [galleryFile, setGalleryFile] = useState<File | null>(null);
+  const [galleryPreview, setGalleryPreview] = useState<string | null>(null);
   const [galleryCaption, setGalleryCaption] = useState("");
+  const [galleryFileError, setGalleryFileError] = useState<string | null>(null);
+  const galleryFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: galleryItems = [], isLoading: galleryLoading } = useQuery({
     queryKey: ["gallery", selectedId],
@@ -204,18 +207,16 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
   const addGalleryMutation = useMutation({
     mutationFn: () => {
       if (!selectedSalon) throw new Error("No salon");
-      const url = galleryUrl.trim();
-      if (!url) throw new Error("Image URL required");
-      return addGalleryItem({
-        salonId: selectedSalon.id,
-        url,
-        caption: galleryCaption.trim() || undefined,
-      });
+      if (!galleryFile) throw new Error("Please select an image");
+      return uploadGalleryImage(selectedSalon.id, galleryFile, galleryCaption.trim() || undefined);
     },
     onSuccess: async () => {
-      setGalleryUrl("");
+      setGalleryFile(null);
+      setGalleryPreview(null);
       setGalleryCaption("");
-      toast.success("Image added to gallery.");
+      setGalleryFileError(null);
+      if (galleryFileInputRef.current) galleryFileInputRef.current.value = "";
+      toast.success("Image uploaded to gallery.");
       await queryClient.invalidateQueries({ queryKey: ["gallery", selectedId] });
       await invalidateSalons();
     },
@@ -672,19 +673,41 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                     <ImagePlus className="h-4 w-4" /> Gallery
                   </CardTitle>
                   <p className="text-sm text-muted-foreground font-normal">
-                    Add image URLs (hosted elsewhere or your CDN). First image is used as the hero on your public page.
+                    Upload images directly. They are stored on Cloudinary and the URL is saved automatically. First image is used as the hero on your public page.
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid gap-4 max-w-xl">
                     <div className="space-y-2">
-                      <Label>Image URL</Label>
+                      <Label>Image file</Label>
                       <Input
-                        value={galleryUrl}
-                        onChange={(e) => setGalleryUrl(e.target.value)}
-                        placeholder="https://…"
+                        ref={galleryFileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          setGalleryFileError(null);
+                          if (!file) { setGalleryFile(null); setGalleryPreview(null); return; }
+                          if (file.size > 5 * 1024 * 1024) {
+                            setGalleryFileError("Image must be smaller than 5 MB");
+                            setGalleryFile(null); setGalleryPreview(null);
+                            e.target.value = "";
+                            return;
+                          }
+                          setGalleryFile(file);
+                          setGalleryPreview(URL.createObjectURL(file));
+                        }}
                       />
+                      {galleryFileError && (
+                        <p className="text-xs text-destructive">{galleryFileError}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">JPEG, PNG or WebP · max 5 MB</p>
                     </div>
+                    {galleryPreview && (
+                      <div className="w-32 h-32 rounded-md overflow-hidden border border-border">
+                        <img src={galleryPreview} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Caption (optional)</Label>
                       <Input
@@ -696,7 +719,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={addGalleryMutation.isPending || !galleryUrl.trim()}
+                      disabled={addGalleryMutation.isPending || !galleryFile}
                       onClick={() => addGalleryMutation.mutate()}
                       className="gap-2 w-fit"
                     >
@@ -705,7 +728,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                       ) : (
                         <ImagePlus className="h-4 w-4" />
                       )}
-                      Add image
+                      Upload image
                     </Button>
                   </div>
 
