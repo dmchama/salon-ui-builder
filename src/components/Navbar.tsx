@@ -57,7 +57,7 @@ const Navbar = () => {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        useGlass ? "glass-dark" : "bg-transparent"
+        useGlass ? "glass-dark" : "bg-black/30 backdrop-blur-sm"
       }`}
     >
       {/* ── main bar ── */}
@@ -115,7 +115,7 @@ const Navbar = () => {
                 className={`relative px-3.5 py-2 rounded-full text-[0.8125rem] font-medium transition-all duration-200 ${
                   active
                     ? "bg-white/14 text-white"
-                    : "text-white/58 hover:text-white hover:bg-white/10"
+                    : "text-white/85 hover:text-white hover:bg-white/10"
                 }`}
               >
                 {link.label}

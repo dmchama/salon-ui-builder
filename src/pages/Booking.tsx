@@ -89,6 +89,9 @@ const Booking = () => {
   const [confirmedBooking, setConfirmedBooking] = useState<BookingCreated | null>(null);
   const [promoInfo, setPromoInfo] = useState<PromoCodeInfo | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [manualPromoInput, setManualPromoInput] = useState(promoCodeParam);
+  const [appliedPromoCode, setAppliedPromoCode] = useState("");
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
   const [touched, setTouched] = useState({ name: false, phone: false, email: false });
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
@@ -106,15 +109,35 @@ const Booking = () => {
 
   useEffect(() => {
     if (!promoCodeParam || !salon) return;
+    setManualPromoInput(promoCodeParam);
     setPromoInfo(null);
     setPromoError(null);
     validatePromoCode(promoCodeParam, salon.id)
-      .then((info) => setPromoInfo(info))
+      .then((info) => { setPromoInfo(info); setAppliedPromoCode(promoCodeParam); })
       .catch((err: unknown) => {
         const msg = err instanceof ApiError ? err.message : "Invalid promo code";
         setPromoError(msg);
       });
   }, [promoCodeParam, salon?.id]);
+
+  const handleApplyPromo = async () => {
+    const code = manualPromoInput.trim().toUpperCase();
+    if (!code || !salon) return;
+    setIsValidatingPromo(true);
+    setPromoInfo(null);
+    setPromoError(null);
+    setAppliedPromoCode("");
+    try {
+      const info = await validatePromoCode(code, salon.id, selectedService || undefined);
+      setPromoInfo(info);
+      setAppliedPromoCode(code);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Invalid promo code";
+      setPromoError(msg);
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
 
   const promoApplies =
     promoInfo &&
@@ -140,7 +163,7 @@ const Booking = () => {
         guestPhone: guestPhone.trim(),
         notes: notesExtra,
         ...(selectedTechnician ? { technicianId: selectedTechnician } : {}),
-        ...(promoApplies && promoCodeParam ? { promoCode: promoCodeParam } : {}),
+        ...(promoApplies && appliedPromoCode ? { promoCode: appliedPromoCode } : {}),
       });
     },
     onSuccess: (booking) => {
@@ -297,15 +320,32 @@ const Booking = () => {
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-sm py-2.5">
+            <div className={`flex justify-between text-sm py-2.5 ${salon.contactPhone ? "border-b border-gray-100" : ""}`}>
               <span className="text-gray-400">Payment</span>
               <span className="font-semibold text-gray-900">
                 {paymentOption === "pay-now" ? "Pay online" : "Pay at salon"}
               </span>
             </div>
+            {salon.contactPhone && (
+              <div className="flex justify-between text-sm py-2.5">
+                <span className="text-gray-400">Contact</span>
+                <a href={`tel:${salon.contactPhone}`} className="font-semibold text-gold hover:underline">
+                  {salon.contactPhone}
+                </a>
+              </div>
+            )}
           </div>
 
-          <Link to="/">
+          {salon.contactPhone && (
+            <p className="text-xs text-gray-400 text-center">
+              Need to cancel or reschedule?{" "}
+              <a href={`tel:${salon.contactPhone}`} className="text-gold hover:underline font-medium">
+                Call {salon.contactPhone}
+              </a>
+            </p>
+          )}
+
+          <Link to="/" className="block mt-4">
             <Button className="rounded-full bg-gold hover:bg-gold/90 text-white px-8 h-12 font-semibold transition-all duration-200 hover:scale-105">
               Return to Home
             </Button>
@@ -434,28 +474,58 @@ const Booking = () => {
                 </motion.div>
               )}
 
-              {promoCodeParam && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-                  {promoInfo && promoApplies && (
-                    <div className="flex items-center gap-2 bg-gold/8 border border-gold/20 rounded-xl px-4 py-3 text-sm">
-                      <Tag className="h-4 w-4 text-gold shrink-0" />
-                      <span className="font-semibold text-gold">{promoInfo.discountPct}% discount applied</span>
-                      <span className="text-gray-400 text-xs ml-1">· {promoCodeParam}</span>
-                    </div>
-                  )}
-                  {promoInfo && !promoApplies && selectedService && (
-                    <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-400">
-                      Promo code does not apply to the selected service
-                    </div>
-                  )}
-                  {promoError && (
-                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-xs text-red-600">
-                      {promoError}
-                    </div>
-                  )}
+            </StepCard>
+
+            {/* Promo code */}
+            <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100/80 space-y-3">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+                  <Tag className="h-3.5 w-3.5 text-gold" />
+                </div>
+                <h3 className="font-display font-semibold text-base tracking-tight text-gray-900">Promo Code</h3>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={manualPromoInput}
+                  onChange={(e) => {
+                    setManualPromoInput(e.target.value.toUpperCase());
+                    setPromoInfo(null);
+                    setPromoError(null);
+                    setAppliedPromoCode("");
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleApplyPromo(); } }}
+                  placeholder="Enter promo code"
+                  className="rounded-xl border-0 bg-gray-100 h-11 px-4 text-sm font-mono tracking-wider uppercase text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400 flex-1 placeholder:normal-case placeholder:tracking-normal placeholder:font-sans"
+                />
+                <Button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={!manualPromoInput.trim() || isValidatingPromo}
+                  className="rounded-xl h-11 px-5 text-sm font-semibold bg-gold/10 text-gold hover:bg-gold/20 border-0 shadow-none shrink-0 disabled:opacity-40"
+                >
+                  {isValidatingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                </Button>
+              </div>
+              {promoInfo && promoApplies && (
+                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 bg-gold/8 border border-gold/20 rounded-xl px-4 py-3 text-sm">
+                  <CheckCircle className="h-4 w-4 text-gold shrink-0" />
+                  <span className="font-semibold text-gold">{promoInfo.discountPct}% discount applied</span>
+                  <span className="text-gray-400 text-xs ml-auto font-mono">{appliedPromoCode}</span>
                 </motion.div>
               )}
-            </StepCard>
+              {promoInfo && !promoApplies && selectedService && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-xs text-amber-700">
+                  This promo code does not apply to the selected service.
+                </div>
+              )}
+              {promoError && (
+                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-xs text-red-600">
+                  {promoError}
+                </motion.div>
+              )}
+            </div>
 
             {/* Schedule step */}
             {selectedService && (
