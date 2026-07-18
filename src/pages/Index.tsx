@@ -135,7 +135,7 @@ const Index = () => {
         <div className="absolute top-24 right-8 z-20 hidden lg:flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full px-4 py-2">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[10px] font-semibold text-white/60 tracking-widest uppercase">
-            SalonBooking.com
+            SaloonBooking.lk
           </span>
         </div>
 
@@ -301,7 +301,7 @@ const Index = () => {
             Own a Salon?
           </h2>
           <p className="text-white/60 text-lg max-w-xl mx-auto leading-relaxed">
-            Join SalonBooking.com and reach more customers. Set up your luxury profile in minutes
+            Join SaloonBooking.lk and reach more customers. Set up your luxury profile in minutes
             and start accepting bookings online.
           </p>
           <div className="pt-8">

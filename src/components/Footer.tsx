@@ -20,8 +20,8 @@ const Footer = () => {
     staleTime: 60_000,
   });
 
-  const footerText = settings?.footerText ?? "© 2026 SalonBooking.com. All rights reserved.";
-  const supportEmail = settings?.supportEmail ?? "support@salonbooking.com";
+  const footerText = settings?.footerText ?? "© 2026 SaloonBooking.lk. All rights reserved.";
+  const supportEmail = settings?.supportEmail ?? "support@saloonbooking.lk";
 
   return (
     <footer className="bg-zinc-950 text-white pt-20 pb-12">
@@ -39,9 +39,9 @@ const Footer = () => {
             {/* Wordmark */}
             <div className="flex flex-col leading-none gap-[2px]">
               <div className="flex items-baseline gap-0">
-                <span className="font-display text-base font-black tracking-tight text-white">Salon</span>
+                <span className="font-display text-base font-black tracking-tight text-white">Saloon</span>
                 <span className="font-display text-base font-black tracking-tight text-gradient-gold">Booking</span>
-                <span className="text-[0.55rem] font-semibold text-white/30 ml-0.5 self-end mb-px">.com</span>
+                <span className="text-[0.55rem] font-semibold text-white/30 ml-0.5 self-end mb-px">.lk</span>
               </div>
               <span className="text-[6.5px] tracking-[0.2em] text-white/25 uppercase font-semibold select-none">
                 Luxury Salon Experience

@@ -91,13 +91,13 @@ const Navbar = () => {
           <div className="flex flex-col leading-none gap-[3px]">
             <div className="flex items-baseline gap-0">
               <span className="font-display text-[1.1rem] font-black tracking-tight text-white">
-                Salon
+                Saloon
               </span>
               <span className="font-display text-[1.1rem] font-black tracking-tight text-gradient-gold">
                 Booking
               </span>
               <span className="font-display text-[0.6rem] font-semibold text-white/32 ml-0.5 tracking-tight self-end mb-px">
-                .com
+                .lk
               </span>
             </div>
             <span className="text-[7.5px] tracking-[0.24em] text-white/28 uppercase font-semibold select-none">
@@ -169,7 +169,7 @@ const Navbar = () => {
                 <path d="M10.8 10L6.9 12.9" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </div>
-            <span className="text-xs font-bold text-white/50 tracking-wide">SalonBooking.com</span>
+            <span className="text-xs font-bold text-white/50 tracking-wide">SaloonBooking.lk</span>
           </div>
 
           {navLinks.map((link) => (
