@@ -135,7 +135,7 @@ const Index = () => {
         <div className="absolute top-24 right-8 z-20 hidden lg:flex items-center gap-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full px-4 py-2">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[10px] font-semibold text-white/60 tracking-widest uppercase">
-            SallonBoking.com
+            SalonBooking.com
           </span>
         </div>
 
@@ -173,31 +173,32 @@ const Index = () => {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-white/25 text-white hover:bg-white/10 hover:border-white/40 rounded-full px-8 py-3 font-semibold text-sm backdrop-blur-sm transition-all duration-200"
+                      className="bg-transparent border-white/25 text-white hover:bg-white/10 hover:text-white hover:border-white/40 rounded-full px-8 py-3 font-semibold text-sm backdrop-blur-sm transition-all duration-200"
                     >
                       View Plans
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   </Link>
                 </div>
+
+                {/* Slide indicators */}
+                {slides.length > 1 && (
+                  <div className="flex items-center gap-2 mt-10 pt-6 border-t border-white/10">
+                    {slides.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        aria-label={`Go to slide ${idx + 1}`}
+                        className={`h-1.5 transition-all duration-500 rounded-full ${
+                          idx === currentSlide ? "w-10 bg-white" : "w-3 bg-white/50 hover:bg-white/75"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Slide indicators */}
-          {slides.length > 1 && (
-            <div className="absolute bottom-10 left-8 z-30 flex gap-2">
-              {slides.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`h-1 transition-all duration-500 rounded-full ${
-                    idx === currentSlide ? "w-8 bg-white" : "w-2 bg-white/35 hover:bg-white/60"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
@@ -300,7 +301,7 @@ const Index = () => {
             Own a Salon?
           </h2>
           <p className="text-white/60 text-lg max-w-xl mx-auto leading-relaxed">
-            Join SallonBoking.com and reach more customers. Set up your luxury profile in minutes
+            Join SalonBooking.com and reach more customers. Set up your luxury profile in minutes
             and start accepting bookings online.
           </p>
           <div className="pt-8">

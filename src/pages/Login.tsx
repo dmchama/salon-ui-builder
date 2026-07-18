@@ -14,6 +14,10 @@ function safeRedirect(raw: string | null): string | undefined {
   return raw;
 }
 
+function validateEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+
 const Login = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -22,9 +26,21 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const emailError =
+    (emailTouched || submitAttempted) && !validateEmail(email)
+      ? "Please enter a valid email address."
+      : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitAttempted(true);
+    if (!validateEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     setPending(true);
     try {
       const { accessToken, user } = await loginRequest(email.trim(), password);
@@ -75,20 +91,27 @@ const Login = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-500 tracking-wide block">
-                  Email
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setEmailTouched(true)}
                   placeholder="you@example.com"
                   required
                   autoComplete="email"
-                  className="rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400"
+                  aria-invalid={Boolean(emailError)}
+                  className={
+                    emailError
+                      ? "rounded-xl border border-red-300 bg-red-50 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-0 placeholder:text-gray-400"
+                      : "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-900 focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-0 placeholder:text-gray-400"
+                  }
                 />
+                {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-500 tracking-wide block">

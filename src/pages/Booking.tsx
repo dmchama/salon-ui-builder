@@ -34,16 +34,35 @@ const inputErrorClass =
 const selectTriggerClass =
   "rounded-xl border-0 bg-gray-100 h-12 px-4 text-sm text-gray-700 focus:ring-2 focus:ring-gold/40 focus:ring-offset-0";
 
-const StepCard = ({ num, title, children }: { num: number; title: string; children: React.ReactNode }) => (
+const StepCard = ({
+  num,
+  title,
+  required,
+  children,
+}: {
+  num: number;
+  title: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) => (
   <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100/80 space-y-5">
     <div className="flex items-center gap-3">
       <div className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
         <span className="text-xs font-bold text-gold">{num}</span>
       </div>
-      <h3 className="font-display font-semibold text-base tracking-tight text-gray-900">{title}</h3>
+      <h3 className="font-display font-semibold text-base tracking-tight text-gray-900">
+        {title}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </h3>
     </div>
     {children}
   </div>
+);
+
+const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
+  <label className="text-xs font-semibold text-gray-500 block">
+    {children} <span className="text-red-500">*</span>
+  </label>
 );
 
 function validatePhone(v: string) {
@@ -425,7 +444,7 @@ const Booking = () => {
             )}
 
             {/* Service step */}
-            <StepCard num={serviceStep} title="Select Service">
+            <StepCard num={serviceStep} title="Select Service" required>
               {salon.services.length === 0 ? (
                 <p className="text-sm text-gray-500">No bookable services yet. Please contact the salon.</p>
               ) : (
@@ -530,10 +549,10 @@ const Booking = () => {
             {/* Schedule step */}
             {selectedService && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <StepCard num={scheduleStep} title="Schedule">
+                <StepCard num={scheduleStep} title="Schedule" required>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-gray-500 block">Date</label>
+                      <RequiredLabel>Date</RequiredLabel>
                       <Input
                         type="date"
                         min={todayMin}
@@ -544,7 +563,7 @@ const Booking = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-gray-500 block">Time</label>
+                      <RequiredLabel>Time</RequiredLabel>
                       <Input
                         type="time"
                         value={time}
@@ -583,10 +602,10 @@ const Booking = () => {
             )}
 
             {/* Contact step */}
-            <StepCard num={contactStep} title="Your Contact">
+            <StepCard num={contactStep} title="Your Contact" required>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-500 block">Full Name</label>
+                  <RequiredLabel>Full Name</RequiredLabel>
                   <Input
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
@@ -599,7 +618,7 @@ const Booking = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-500 block">Phone</label>
+                    <RequiredLabel>Phone</RequiredLabel>
                     <Input
                       type="tel"
                       value={guestPhone}
@@ -612,7 +631,7 @@ const Booking = () => {
                     {phoneError && <p className="text-xs text-red-500 mt-1">{phoneError}</p>}
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-500 block">Email</label>
+                    <RequiredLabel>Email</RequiredLabel>
                     <Input
                       type="email"
                       value={guestEmail}

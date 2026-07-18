@@ -75,7 +75,9 @@ const Navbar = () => {
             <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shimmer-sweep overflow-hidden">
               {/* specular highlight */}
               <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/28 to-transparent rounded-t-xl pointer-events-none" />
-              <ScissorsIcon />
+              <div className="relative z-10">
+                <ScissorsIcon />
+              </div>
             </div>
 
             {/* floating sparkle */}
@@ -89,10 +91,10 @@ const Navbar = () => {
           <div className="flex flex-col leading-none gap-[3px]">
             <div className="flex items-baseline gap-0">
               <span className="font-display text-[1.1rem] font-black tracking-tight text-white">
-                Sallon
+                Salon
               </span>
               <span className="font-display text-[1.1rem] font-black tracking-tight text-gradient-gold">
-                Boking
+                Booking
               </span>
               <span className="font-display text-[0.6rem] font-semibold text-white/32 ml-0.5 tracking-tight self-end mb-px">
                 .com
@@ -167,7 +169,7 @@ const Navbar = () => {
                 <path d="M10.8 10L6.9 12.9" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </div>
-            <span className="text-xs font-bold text-white/50 tracking-wide">SallonBoking.com</span>
+            <span className="text-xs font-bold text-white/50 tracking-wide">SalonBooking.com</span>
           </div>
 
           {navLinks.map((link) => (
