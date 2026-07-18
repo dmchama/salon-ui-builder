@@ -391,7 +391,7 @@ const Dashboard = () => {
       <div className="bg-black text-white px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">
-            <span className="font-display font-bold text-xl md:text-2xl tracking-widest uppercase">GLAMBOOK</span>
+            <span className="font-display font-bold text-xl md:text-2xl tracking-widest uppercase">SaloonBooking</span>
             <span className="text-gold tracking-widest text-xs uppercase px-3 border-l border-white/20 hidden md:block">
               Owner Portal
             </span>
