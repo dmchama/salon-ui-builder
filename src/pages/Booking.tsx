@@ -14,6 +14,7 @@ import { ArrowLeft, CheckCircle, GitBranch, Loader2, MapPin, Tag } from "lucide-
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Seo from "@/components/Seo";
 import { fetchPublicSalonBySlug, fetchSalonBranches } from "@/api/salon-api";
 import { createGuestBooking, validatePromoCode, type BookingCreated, type PromoCodeInfo } from "@/api/bookings-api";
 import { ApiError } from "@/api/http";
@@ -213,6 +214,7 @@ const Booking = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
+        <Seo title="Loading…" description="Loading booking." path={`/booking/${slug ?? ""}`} noindex />
         <Navbar />
         <div className="pt-32 flex justify-center gap-2 text-gray-400 py-24">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -227,6 +229,7 @@ const Booking = () => {
     const msg = error instanceof ApiError ? error.message : "Salon not found";
     return (
       <div className="min-h-screen bg-background">
+        <Seo title="Salon Not Found" description="This salon could not be found." path={`/booking/${slug ?? ""}`} noindex />
         <Navbar />
         <div className="pt-32 container text-center py-20">
           <h1 className="font-display text-2xl font-bold tracking-tight text-gray-900">{msg}</h1>
@@ -260,6 +263,7 @@ const Booking = () => {
   if (confirmedBooking) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
+        <Seo title="Booking Confirmed" description="Your booking is confirmed." path={`/booking/${slug ?? ""}`} noindex />
         <Navbar />
         <div className="pt-32 container max-w-lg text-center py-16 space-y-8">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }}>
@@ -378,6 +382,12 @@ const Booking = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
+      <Seo
+        title={`Book ${salon.name}`}
+        description={`Book your appointment at ${salon.name}${locationLine ? ` in ${locationLine}` : ""}.`}
+        path={`/booking/${slugPath}`}
+        noindex
+      />
       <Navbar />
       <div className="pt-32 pb-24">
         <div className="container max-w-2xl">

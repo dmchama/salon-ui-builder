@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { createSalon, setDefaultBranch } from "@/api/salon-api";
+import Seo from "@/components/Seo";
 import { toast } from "sonner";
 import {
   Select,
@@ -388,6 +389,7 @@ const Dashboard = () => {
       exit={{ opacity: 0 }}
       className="min-h-screen bg-background text-foreground transition-colors"
     >
+      <Seo title="Owner Dashboard" description="Manage your salon on SaloonBooking." path="/dashboard" noindex />
       <div className="bg-black text-white px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">

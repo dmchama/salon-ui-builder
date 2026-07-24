@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Seo from "@/components/Seo";
 
 const Contact = () => {
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", message: "" });
@@ -21,8 +22,13 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Contact Us"
+        description="Get in touch with the SaloonBooking team in Sri Lanka. We're here to help salon and saloon owners and customers alike."
+        path="/contact"
+      />
       <Navbar />
-      
+
       {/* Hero */}
       <section className="relative pt-32 pb-20 min-h-[50vh] flex items-center justify-start overflow-hidden bg-black neon-edge-glow">
         <div className="container relative z-20 text-left mt-10">

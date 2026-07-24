@@ -7,6 +7,7 @@ import { MapPin, Star, ArrowLeft, Loader2, Phone, Mail, Globe, Clock, GitBranch 
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Seo from "@/components/Seo";
 import { fetchPublicSalonBySlug, fetchSalonBranches } from "@/api/salon-api";
 import { ApiError } from "@/api/http";
 import { formatBusinessHoursLines, mergeBusinessHoursFromApi } from "@/lib/business-hours";
@@ -61,6 +62,7 @@ const SalonDetail = () => {
   if (primaryLoading) {
     return (
       <div className="min-h-screen bg-background">
+        <Seo title="Loading Salon…" description="Loading salon details." path={`/salon/${slug ?? ""}`} noindex />
         <Navbar />
         <div className="pt-32 flex justify-center items-center gap-2 text-gray-400 py-24">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -75,6 +77,7 @@ const SalonDetail = () => {
     const msg = error instanceof ApiError ? error.message : "Salon not found";
     return (
       <div className="min-h-screen bg-background">
+        <Seo title="Salon Not Found" description="This salon could not be found." path={`/salon/${slug ?? ""}`} noindex />
         <Navbar />
         <div className="pt-32 container text-center py-20">
           <h1 className="font-display text-2xl font-bold tracking-tight text-gray-900">{msg}</h1>
@@ -102,8 +105,34 @@ const SalonDetail = () => {
 
   const showBranchSelector = branches.length > 1;
 
+  const seoDescription =
+    primarySalon.description?.trim() ||
+    `Book your appointment at ${primarySalon.name}${locationLine ? ` in ${locationLine}` : ""}. View services, hours, and contact details on SaloonBooking.`;
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
+      <Seo
+        title={`${primarySalon.name} — Book Online`}
+        description={seoDescription}
+        path={`/salon/${slug ?? ""}`}
+        image={heroImage}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "HairSalon",
+          name: primarySalon.name,
+          description: seoDescription,
+          image: heroImage,
+          url: `https://saloonbooking.lk/salon/${slug ?? ""}`,
+          telephone: salon.contactPhone || undefined,
+          email: salon.contactEmail || undefined,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: salon.address || undefined,
+            addressLocality: salon.city || undefined,
+            addressCountry: salon.country || undefined,
+          },
+        }}
+      />
       <Navbar />
 
       {/* Hero */}

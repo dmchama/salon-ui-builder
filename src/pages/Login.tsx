@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Scissors, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 import { toast } from "sonner";
 import { loginRequest } from "@/api/auth-api";
 import { setAuth } from "@/lib/auth-storage";
@@ -70,6 +71,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo title="Sign In" description="Sign in to your SaloonBooking account." path="/login" noindex />
       <Navbar />
       <div className="pt-20 min-h-screen flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">

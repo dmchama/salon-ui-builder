@@ -3,22 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Fallback title only: every route renders its own <Seo> (react-helmet-async), which
+         overwrites this on mount. Meta description/OG/Twitter tags are intentionally NOT
+         duplicated here — react-helmet-async only dedupes tags it rendered itself, so a static
+         meta tag here would sit alongside (not replace) the per-page one. Every route must render
+         <Seo> so those tags are never missing. -->
     <title>SaloonBooking</title>
-    <meta name="description" content="Book luxury salon appointments online with SaloonBooking.lk">
-    <meta name="author" content="SaloonBooking" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
-
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="/hero-bg.png">
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="/hero-bg.png">
-    <meta property="og:title" content="SaloonBooking">
-  <meta name="twitter:title" content="SaloonBooking">
-  <meta property="og:description" content="Book luxury salon appointments online with SaloonBooking.lk">
-  <meta name="twitter:description" content="Book luxury salon appointments online with SaloonBooking.lk">
 </head>
 
   <body>

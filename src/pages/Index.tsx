@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalonCard from "@/components/SalonCard";
+import Seo from "@/components/Seo";
 import { initialHeroSlides } from "@/data/mockSalons";
 import { fetchPublishedSalons, groupSalonsByOwner } from "@/api/search-api";
 import { fetchPublicWebsiteSettings, WebsiteHeroSlide } from "@/api/admin-api";
@@ -64,6 +65,21 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="SaloonBooking — Book Salons & Saloons Online in Sri Lanka"
+        description="SaloonBooking.lk is Sri Lanka's online salon and saloon booking platform. Find top-rated hair and beauty salons near you and book your appointment in minutes."
+        path="/"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "SaloonBooking",
+          alternateName: "SalonBooking",
+          url: "https://saloonbooking.lk",
+          logo: "https://saloonbooking.lk/favicon.svg",
+          description:
+            "Sri Lanka's online salon and saloon booking platform connecting customers with top hair and beauty salons.",
+        }}
+      />
       <Navbar />
 
       {/* ── Hero ── */}

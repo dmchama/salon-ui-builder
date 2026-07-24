@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Scissors, Check, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import Seo from "@/components/Seo";
 import { toast } from "sonner";
 import { fetchSubscriptionPlans } from "@/api/plans-api";
 import { registerSalonAdmin } from "@/api/auth-api";
@@ -92,6 +93,12 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title="List Your Salon on SaloonBooking"
+        description="Register your salon or saloon on SaloonBooking.lk and start accepting bookings online in Sri Lanka."
+        path="/register"
+        noindex
+      />
       <Navbar />
       <div className="pt-20 min-h-screen flex items-center justify-center px-4 py-12">
         {step === 1 ? (

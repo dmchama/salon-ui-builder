@@ -17,6 +17,7 @@ import {
   CalendarCheck, Building2, RefreshCw,
 } from "lucide-react";
 import CampaignRequestManager from "@/components/admin/CampaignRequestManager";
+import Seo from "@/components/Seo";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
@@ -1555,6 +1556,7 @@ const Admin = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background text-foreground transition-colors">
+      <Seo title="System Admin" description="SaloonBooking system administration." path="/admin" noindex />
       <div className="bg-black text-white px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center gap-3">

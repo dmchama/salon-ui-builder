@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SalonCard from "@/components/SalonCard";
+import Seo from "@/components/Seo";
 import { fetchPublishedSalons, groupSalonsByOwner } from "@/api/search-api";
 
 const PLACEHOLDER_IMAGE =
@@ -52,6 +53,11 @@ const Salons = () => {
       exit={{ opacity: 0 }}
       className="min-h-screen bg-background"
     >
+      <Seo
+        title="Find a Salon or Saloon Near You"
+        description="Browse verified hair and beauty salons across Sri Lanka. Search by city, compare services, and book your salon appointment online with SaloonBooking."
+        path="/salons"
+      />
       <Navbar />
 
       {/* Page header */}

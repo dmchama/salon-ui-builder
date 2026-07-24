@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Seo from "@/components/Seo";
 import { fetchSubscriptionPlans, SubscriptionPlanDto, PlanLimits } from "@/api/plans-api";
 
 function formatPrice(cents: number, currency: string): string {
@@ -189,6 +190,11 @@ const Pricing = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-background">
+      <Seo
+        title="Pricing — Plans for Salon & Saloon Owners"
+        description="Simple, transparent pricing for salon and saloon owners on SaloonBooking.lk. List your salon, manage bookings, and grow your business online in Sri Lanka."
+        path="/pricing"
+      />
       <Navbar />
 
       {/* Header */}
