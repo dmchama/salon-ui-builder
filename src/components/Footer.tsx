@@ -73,6 +73,9 @@ const Footer = () => {
         <div>
           <h4 className="font-display font-semibold mb-6 text-sm text-white/80">Contact</h4>
           <div className="space-y-3">
+            <Link to="/contact" className="block text-sm text-white/45 hover:text-white/80 transition-colors">
+              Get in Touch
+            </Link>
             <a
               href={`mailto:${supportEmail}`}
               className="block text-sm text-white/45 hover:text-white/80 transition-colors"
