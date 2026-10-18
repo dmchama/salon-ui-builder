@@ -62,6 +62,36 @@ export async function validatePromoCode(
   });
 }
 
+export type AvailabilityDay = {
+  /** YYYY-MM-DD, Asia/Colombo */
+  date: string;
+  closed: boolean;
+  /** "HH:mm" or null when closed */
+  open: string | null;
+  close: string | null;
+  /** Free start times, Colombo "HH:mm" */
+  slots: string[];
+};
+
+export type Availability = {
+  timezone: "Asia/Colombo";
+  slotIntervalMin: number;
+  serviceDurationMin: number;
+  days: AvailabilityDay[];
+};
+
+export const availabilityQueryKey = (salonId: string, serviceId: string) =>
+  ["availability", salonId, serviceId] as const;
+
+/** Public endpoint — free start times for the next 60 days (feature 001). */
+export async function fetchAvailability(salonId: string, serviceId: string): Promise<Availability> {
+  const params = new URLSearchParams({ salonId, serviceId });
+  return apiRequest<Availability>(`/bookings/availability?${params}`, {
+    method: "GET",
+    skipAuth: true,
+  });
+}
+
 /** Public endpoint — never sends JWT (guest booking). */
 export async function createGuestBooking(payload: CreateBookingPayload): Promise<BookingCreated> {
   return apiRequest<BookingCreated>("/bookings", {
