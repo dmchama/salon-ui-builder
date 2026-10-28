@@ -38,6 +38,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { uploadGalleryImage, deleteGalleryItem, fetchGalleryForSalon } from "@/api/gallery-api";
 import { ApiError } from "@/api/http";
+import { useMyRegistrationPayment } from "@/hooks/use-my-registration-payment";
 import { slugify } from "@/lib/utils";
 import {
   DAY_LABELS,
@@ -195,6 +196,10 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
     },
   });
 
+  // Publishing opens only after the admin approves the payment (spec 002 AC11).
+  const { data: registration } = useMyRegistrationPayment();
+  const awaitingApproval = registration?.accountStatus === "PENDING";
+
   const publishMutation = useMutation({
     mutationFn: (id: string) => publishSalon(id),
     onSuccess: async () => {
@@ -202,7 +207,12 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
       await invalidateSalons();
     },
     onError: (e: unknown) => {
-      const msg = e instanceof ApiError ? e.message : "Could not publish";
+      const msg =
+        e instanceof ApiError && e.code === "ACCOUNT_NOT_APPROVED"
+          ? "You can publish once your payment is verified and your account is approved."
+          : e instanceof ApiError
+            ? e.message
+            : "Could not publish";
       toast.error(msg);
     },
   });
@@ -487,7 +497,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={publishMutation.isPending}
+                          disabled={publishMutation.isPending || awaitingApproval}
                           onClick={() => publishMutation.mutate(selectedSalon.id)}
                         >
                           {publishMutation.isPending ? (
@@ -497,6 +507,11 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                           )}
                           Publish to public site
                         </Button>
+                      )}
+                      {selectedSalon.status === "DRAFT" && awaitingApproval && (
+                        <span className="self-center text-xs text-muted-foreground">
+                          Available after your account is approved
+                        </span>
                       )}
                     </div>
                   </div>

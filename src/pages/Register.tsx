@@ -12,21 +12,29 @@ import { fetchSubscriptionPlans } from "@/api/plans-api";
 import { registerSalonAdmin } from "@/api/auth-api";
 import { setAuth } from "@/lib/auth-storage";
 import { ApiError } from "@/api/http";
+import PaymentStep from "@/components/registration/PaymentStep";
+
+const RECEIPT_ERRORS: Record<string, string> = {
+  INVALID_RECEIPT_FILE: "That receipt file can't be used. Upload a JPG, PNG, WEBP, HEIC or PDF up to 5 MB.",
+  RECEIPT_REQUIRED: "Please upload your payment receipt.",
+  RECEIPT_UPLOAD_FAILED: "We couldn't upload your receipt. Please try again.",
+};
 
 const Register = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [receipt, setReceipt] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const { data: plans = [], isLoading: plansLoading, isError: plansError } = useQuery({
     queryKey: ["subscription-plans"],
     queryFn: fetchSubscriptionPlans,
-    enabled: step === 2,
+    enabled: step >= 2,
   });
 
   useEffect(() => {
@@ -43,9 +51,23 @@ const Register = () => {
     setStep(2);
   };
 
-  const handleComplete = async () => {
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
+  const handlePlanNext = () => {
     if (!selectedPlanId) {
       toast.error("Select a subscription plan.");
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleComplete = async () => {
+    if (!selectedPlanId) {
+      setStep(2);
+      return;
+    }
+    if (!receipt) {
+      toast.error("Please upload your payment receipt.");
       return;
     }
     const trimmed = fullName.trim();
@@ -62,12 +84,14 @@ const Register = () => {
         firstName: firstName || undefined,
         lastName,
         subscriptionPlanId: selectedPlanId,
-      });
+      }, receipt);
       setAuth(accessToken, user);
-      toast.success("Account created! Set up your salon in the dashboard.");
+      toast.success("Registration submitted — we'll activate your account once your payment is verified.");
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Registration failed.";
+      // Stay on the payment step with everything kept so the user can retry (AC8).
+      const msg =
+        err instanceof ApiError ? (err.code && RECEIPT_ERRORS[err.code]) || err.message : "Registration failed.";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -116,8 +140,9 @@ const Register = () => {
                   <div className="flex items-center justify-center gap-2 mt-2">
                     <div className="w-6 h-1.5 rounded-full bg-gold" />
                     <div className="w-6 h-1.5 rounded-full bg-gray-200" />
+                    <div className="w-6 h-1.5 rounded-full bg-gray-200" />
                   </div>
-                  <p className="text-sm text-gray-500 mt-2">Step 1 of 2 — Account Details</p>
+                  <p className="text-sm text-gray-500 mt-2">Step 1 of 3 — Account Details</p>
                 </div>
               </div>
 
@@ -152,6 +177,16 @@ const Register = () => {
               </p>
             </div>
           </div>
+        ) : step === 3 ? (
+          <PaymentStep
+            planName={selectedPlan?.name ?? ""}
+            amountLabel={selectedPlan ? formatMoney(selectedPlan.priceCents, selectedPlan.currency) : ""}
+            receipt={receipt}
+            onReceiptChange={setReceipt}
+            onBack={() => setStep(2)}
+            onSubmit={handleComplete}
+            submitting={submitting}
+          />
         ) : (
           <div className="w-full max-w-4xl px-4">
             {/* Header */}
@@ -160,8 +195,9 @@ const Register = () => {
               <div className="flex items-center justify-center gap-2 mt-3">
                 <div className="w-6 h-1.5 rounded-full bg-gold/40" />
                 <div className="w-6 h-1.5 rounded-full bg-gold" />
+                <div className="w-6 h-1.5 rounded-full bg-gray-200" />
               </div>
-              <p className="text-sm text-gray-500 mt-2">Step 2 of 2 — Select a subscription plan</p>
+              <p className="text-sm text-gray-500 mt-2">Step 2 of 3 — Select a subscription plan</p>
             </div>
 
             {plansLoading && (
@@ -239,12 +275,11 @@ const Register = () => {
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
               <Button
-                onClick={handleComplete}
+                onClick={handlePlanNext}
                 className="gap-2 rounded-xl h-11 px-6 bg-gold hover:bg-gold/90 text-white font-semibold"
-                disabled={submitting || plansLoading || !selectedPlanId}
+                disabled={plansLoading || !selectedPlanId}
               >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Create Account <ArrowRight className="h-4 w-4" />
+                Next: Payment <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>

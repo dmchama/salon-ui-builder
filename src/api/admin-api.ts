@@ -48,12 +48,22 @@ export type WebsiteHeroSlide = {
   buttonText: string;
 };
 
+export type PaymentDetails = {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  branch: string;
+  instructions: string;
+};
+
 export type WebsiteSettings = {
   heroSlides: WebsiteHeroSlide[];
   footerText: string;
   supportEmail: string;
   metaTitle: string;
   metaDescription: string;
+  /** null when not configured (spec 002 AC21) */
+  paymentDetails: PaymentDetails | null;
 };
 
 export async function fetchWebsiteSettings(): Promise<WebsiteSettings> {
@@ -76,6 +86,15 @@ export async function saveSeoSettings(data: { metaTitle: string; metaDescription
   return apiRequest<void>("/admin/website/seo", { method: "PATCH", body: JSON.stringify(data) });
 }
 
+export type PaymentDetailsInput = Omit<PaymentDetails, "branch" | "instructions"> & {
+  branch?: string;
+  instructions?: string;
+};
+
+export async function savePaymentDetails(data: PaymentDetailsInput): Promise<{ paymentDetails: PaymentDetails | null }> {
+  return apiRequest("/admin/website/payment-details", { method: "PATCH", body: JSON.stringify(data) });
+}
+
 export type OwnerSalon = { id: string; name: string; status: string };
 export type OwnerSubscription = { planName: string; subStatus: string; expiresAt: string };
 
@@ -88,7 +107,42 @@ export type SalonOwnerDto = {
   status: "active" | "suspended" | "pending";
   salons: OwnerSalon[];
   subscription: OwnerSubscription | null;
+  /** Latest registration payment (spec 002), null when none was uploaded. */
+  registrationPayment: { id: string; status: RegistrationPaymentStatus; createdAt: string } | null;
 };
+
+// ── Registration payments (spec 002) ──────────────────────────────────────
+
+export type RegistrationPaymentStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type AdminRegistrationPaymentDto = {
+  owner: { id: string; displayName: string; email: string; accountStatus: "PENDING" | "ACTIVE" | "SUSPENDED" };
+  payment: {
+    id: string;
+    status: RegistrationPaymentStatus;
+    amountCents: number;
+    currency: string;
+    planName: string;
+    rejectionReason: string | null;
+    createdAt: string;
+    reviewedAt: string | null;
+    receiptFormat: string;
+    receiptUrl: string;
+  } | null;
+  history: { id: string; status: RegistrationPaymentStatus; rejectionReason: string | null; createdAt: string; reviewedAt: string | null }[];
+};
+
+export async function fetchOwnerRegistrationPayment(ownerId: string): Promise<AdminRegistrationPaymentDto> {
+  return apiRequest<AdminRegistrationPaymentDto>(`/admin/owners/${ownerId}/registration-payment`, { method: "GET" });
+}
+
+export async function approveRegistrationPayment(id: string): Promise<{ message: string; ownerId: string }> {
+  return apiRequest(`/admin/registration-payments/${id}/approve`, { method: "PATCH" });
+}
+
+export async function rejectRegistrationPayment(id: string, reason: string): Promise<{ message: string; ownerId: string }> {
+  return apiRequest(`/admin/registration-payments/${id}/reject`, { method: "PATCH", body: JSON.stringify({ reason }) });
+}
 
 export async function fetchOwners(): Promise<SalonOwnerDto[]> {
   return apiRequest<SalonOwnerDto[]>("/admin/owners", { method: "GET" });

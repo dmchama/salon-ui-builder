@@ -26,6 +26,7 @@ import SettingsPanel from "@/components/dashboard/SettingsPanel";
 import TechnicianManager from "@/components/dashboard/TechnicianManager";
 import PromotionSMS from "@/components/dashboard/PromotionSMS";
 import CouponManager from "@/components/dashboard/CouponManager";
+import PendingApprovalBanner from "@/components/dashboard/PendingApprovalBanner";
 import { clearAuth, getAccessToken, getStoredUser } from "@/lib/auth-storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -185,7 +186,7 @@ function BranchSelector({ salons, selectedSalonId, onSelect, onCreated, maxSalon
                   <Input placeholder="Sri Lanka" value={country} onChange={e => setCountry(e.target.value)} />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">The branch starts in <strong>Draft</strong> status. An admin must publish it before customers can book.</p>
+              <p className="text-xs text-muted-foreground">The branch starts in <strong>Draft</strong> status. Publish it from the profile when it's ready (available once your account is approved).</p>
               <Button
                 className="w-full rounded-none uppercase tracking-widest text-xs"
                 disabled={!name.trim() || !slug.trim() || createMut.isPending}
@@ -430,6 +431,8 @@ const Dashboard = () => {
 
         {data && !isLoading && (
           <>
+            <PendingApprovalBanner />
+
             <BranchSelector
               salons={data.salons}
               selectedSalonId={selectedSalonId}

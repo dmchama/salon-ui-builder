@@ -14,9 +14,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   LogOut, CreditCard, Users, BarChart3, Shield, Globe, Megaphone, Ticket, MessageSquare,
   Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle, Loader2,
-  CalendarCheck, Building2, RefreshCw,
+  CalendarCheck, Building2, RefreshCw, Receipt,
 } from "lucide-react";
 import CampaignRequestManager from "@/components/admin/CampaignRequestManager";
+import PaymentDetailsForm from "@/components/admin/PaymentDetailsForm";
+import RegistrationPaymentDialog from "@/components/admin/RegistrationPaymentDialog";
 import Seo from "@/components/Seo";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -24,7 +26,7 @@ import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
 import { motion } from "framer-motion";
 import {
   fetchAdminStats, AdminStats,
-  SalonOwnerDto, fetchOwners, approveOwner, suspendOwner, activateOwner,
+  SalonOwnerDto, fetchOwners, suspendOwner, activateOwner,
   AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
   WebsiteHeroSlide, WebsiteSettings,
   fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
@@ -312,9 +314,16 @@ const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500 hover:bg-yellow-600 text-black",
 };
 
+const PAYMENT_BADGE: Record<string, { label: string; className: string }> = {
+  PENDING: { label: "Pending", className: "bg-yellow-500 text-black" },
+  APPROVED: { label: "Approved", className: "bg-green-600 text-white" },
+  REJECTED: { label: "Rejected", className: "bg-red-500 text-white" },
+};
+
 const AccountManager = () => {
   const qc = useQueryClient();
   const [filter, setFilter] = useState("all");
+  const [reviewOwnerId, setReviewOwnerId] = useState<string | null>(null);
 
   const { data: owners = [], isLoading, isError, refetch, isFetching } = useQuery<SalonOwnerDto[]>({
     queryKey: ["admin-owners"],
@@ -323,15 +332,6 @@ const AccountManager = () => {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-owners"] });
-
-  const approveMutation = useMutation({
-    mutationFn: (id: string) => approveOwner(id),
-    onSuccess: (_d, id) => {
-      toast.success(`${owners.find(o => o.id === id)?.displayName ?? "Owner"} approved`);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const suspendMutation = useMutation({
     mutationFn: (id: string) => suspendOwner(id),
@@ -351,7 +351,7 @@ const AccountManager = () => {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const anyPending = approveMutation.isPending || suspendMutation.isPending || activateMutation.isPending;
+  const anyPending = suspendMutation.isPending || activateMutation.isPending;
   const filtered = filter === "all" ? owners : owners.filter(o => o.status === filter);
   const counts = {
     all: owners.length,
@@ -414,6 +414,7 @@ const AccountManager = () => {
                 <TableHead>Owner</TableHead>
                 <TableHead>Salons</TableHead>
                 <TableHead>Plan</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -422,7 +423,7 @@ const AccountManager = () => {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-12 text-sm tracking-wide">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12 text-sm tracking-wide">
                     No accounts found.
                   </TableCell>
                 </TableRow>
@@ -454,6 +455,14 @@ const AccountManager = () => {
                     }
                   </TableCell>
                   <TableCell>
+                    {o.registrationPayment
+                      ? <Badge className={`${PAYMENT_BADGE[o.registrationPayment.status]?.className ?? ""} border-0`}>
+                          {PAYMENT_BADGE[o.registrationPayment.status]?.label ?? o.registrationPayment.status}
+                        </Badge>
+                      : <span className="text-xs text-muted-foreground">No receipt</span>
+                    }
+                  </TableCell>
+                  <TableCell>
                     <Badge className={`${STATUS_COLORS[o.status] ?? ""} border-0 capitalize`}>
                       {o.status}
                     </Badge>
@@ -463,12 +472,15 @@ const AccountManager = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      {/* Receipt review — approval of PENDING owners happens in the dialog (spec 002 AC17) */}
+                      {o.registrationPayment && (
+                        <Button variant="ghost" size="sm" onClick={() => setReviewOwnerId(o.id)} title="Review payment" className="gap-1 text-xs">
+                          <Receipt className="h-4 w-4" /> {o.status === "pending" && o.registrationPayment.status === "PENDING" ? "Review payment" : "Receipt"}
+                        </Button>
+                      )}
                       {/* PENDING â†’ Approve or Suspend */}
                       {o.status === "pending" && (
                         <>
-                          <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => approveMutation.mutate(o.id)} title="Approve account" className="text-green-600 hover:text-green-700 hover:bg-green-50">
-                            {approveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                          </Button>
                           <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => suspendMutation.mutate(o.id)} title="Reject / suspend" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                             {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
                           </Button>
@@ -494,6 +506,7 @@ const AccountManager = () => {
           </Table>
         </Card>
       )}
+      <RegistrationPaymentDialog ownerId={reviewOwnerId} onClose={() => setReviewOwnerId(null)} />
     </div>
   );
 };
@@ -1304,6 +1317,8 @@ const WebsiteManager = () => {
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Website Management</h2>
       </div>
+
+      {settings && <PaymentDetailsForm current={settings.paymentDetails} />}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">

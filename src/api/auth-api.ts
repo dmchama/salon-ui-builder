@@ -1,4 +1,5 @@
 import { apiRequest } from "./http";
+import { asUploadFile } from "@/lib/receipt-file";
 import type { StoredUser } from "@/lib/auth-storage";
 
 export type AuthResponse = {
@@ -22,9 +23,15 @@ export type RegisterSalonAdminPayload = {
   subscriptionPlanId: string;
 };
 
-export async function registerSalonAdmin(payload: RegisterSalonAdminPayload): Promise<AuthResponse> {
+/** Registers a salon owner with the payment receipt (multipart, spec 002). */
+export async function registerSalonAdmin(payload: RegisterSalonAdminPayload, receipt: File): Promise<AuthResponse> {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(payload)) {
+    if (value !== undefined && value !== "") form.append(key, value);
+  }
+  form.append("receipt", asUploadFile(receipt));
   return apiRequest<AuthResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: form,
   });
 }
