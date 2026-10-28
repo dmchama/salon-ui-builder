@@ -41,24 +41,14 @@ import {
   fetchAdminPlans, createPlan, updatePlan, deletePlan,
 } from "@/api/plans-api";
 
+import { StatusBadge } from "@/components/app-shell/parts";
+
+import { MONTH_NAMES, fmtLkr } from "@/lib/admin-format";
+
 /* Moved unchanged from pages/Admin.tsx (feature 004 T015). */
-
-export const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-export function fmtLkr(cents: number) {
-  return `Rs. ${(cents / 100).toLocaleString("en-LK")}`;
-}
-
-
 
 // ── BillingManager ────────────────────────────────────────────────────────
 
-const invoiceStatusColors: Record<OverageInvoiceStatus, string> = {
-  DRAFT:     "bg-secondary text-muted-foreground",
-  SENT:      "bg-blue-100 text-blue-800",
-  PAID:      "bg-green-100 text-green-800",
-  CANCELLED: "bg-red-100 text-red-700",
-};
 
 const BillingManager = () => {
   const qc = useQueryClient();
@@ -90,9 +80,9 @@ const BillingManager = () => {
     onError: () => toast.error("Failed to generate invoices"),
   });
 
-  const sendMut     = useMutation({ mutationFn: sendOverageInvoice,      onSuccess: () => { toast.success("Invoice sent"); refetchInvoices(); }, onError: () => toast.error("Failed to send") });
-  const paidMut     = useMutation({ mutationFn: markOverageInvoicePaid,  onSuccess: () => { toast.success("Marked as paid"); refetchInvoices(); }, onError: () => toast.error("Failed to update") });
-  const cancelMut   = useMutation({ mutationFn: cancelOverageInvoice,    onSuccess: () => { toast.success("Invoice cancelled"); refetchInvoices(); }, onError: () => toast.error("Failed to cancel") });
+  const sendMut     = useMutation({ mutationFn: sendOverageInvoice, onSuccess: () => { toast.success("Invoice sent"); refetchInvoices(); }, onError: () => toast.error("Failed to send") });
+  const paidMut     = useMutation({ mutationFn: markOverageInvoicePaid, onSuccess: () => { toast.success("Marked as paid"); refetchInvoices(); }, onError: () => toast.error("Failed to update") });
+  const cancelMut   = useMutation({ mutationFn: cancelOverageInvoice, onSuccess: () => { toast.success("Invoice cancelled"); refetchInvoices(); }, onError: () => toast.error("Failed to cancel") });
 
   const fmtRs = (cents: number) => `Rs. ${(cents / 100).toLocaleString("en-LK", { minimumFractionDigits: 2 })}`;
 
@@ -101,7 +91,7 @@ const BillingManager = () => {
       {/* Overage price setting */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4 text-rose-500" /> Overage Rate</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4 text-gold-strong" /> Overage Rate</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
@@ -133,7 +123,7 @@ const BillingManager = () => {
       {/* Generate invoices */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="h-4 w-4 text-blue-500" /> Generate Overage Invoices</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="h-4 w-4 text-gold-strong" /> Generate Overage Invoices</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">Scan all owners for the selected month and create invoices for any who exceeded their booking quota.</p>
@@ -200,10 +190,10 @@ const BillingManager = () => {
                       <TableCell className="text-sm">{period}</TableCell>
                       <TableCell className="text-right text-sm">{inv.bookingLimit}</TableCell>
                       <TableCell className="text-right text-sm">{inv.totalBookings}</TableCell>
-                      <TableCell className="text-right text-sm font-semibold text-rose-600">+{inv.overageCount}</TableCell>
-                      <TableCell className="text-right text-sm font-bold">{fmtRs(inv.totalCents)}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-amber-700">+{inv.overageCount}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold">{fmtRs(inv.totalCents)}</TableCell>
                       <TableCell>
-                        <Badge className={`text-[10px] uppercase tracking-wider ${invoiceStatusColors[inv.status]}`}>{inv.status}</Badge>
+                        <StatusBadge kind="invoice" status={inv.status} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-1 justify-end">
@@ -213,7 +203,7 @@ const BillingManager = () => {
                             </Button>
                           )}
                           {inv.status === "SENT" && (
-                            <Button size="sm" variant="outline" className="h-7 text-xs text-green-700 border-green-300" onClick={() => paidMut.mutate(inv.id)} disabled={paidMut.isPending}>
+                            <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700 border-emerald-300" onClick={() => paidMut.mutate(inv.id)} disabled={paidMut.isPending}>
                               Paid
                             </Button>
                           )}

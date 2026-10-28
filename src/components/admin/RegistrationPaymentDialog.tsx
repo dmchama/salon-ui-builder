@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CheckCircle, ExternalLink, FileText, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/app-shell/parts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -23,11 +23,6 @@ const rejectSchema = z.object({
 });
 type RejectForm = z.infer<typeof rejectSchema>;
 
-const STATUS_BADGE: Record<RegistrationPaymentStatus, string> = {
-  PENDING: "bg-yellow-500 text-black",
-  APPROVED: "bg-green-600 text-white",
-  REJECTED: "bg-red-500 text-white",
-};
 
 const colomboDateTime = (iso: string) =>
   new Date(iso).toLocaleString("en-LK", {
@@ -109,15 +104,15 @@ const RegistrationPaymentDialog = ({ ownerId, onClose }: Props) => {
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Owner</p>
+                <p className="text-xs text-muted-foreground">Owner</p>
                 <p className="font-medium">{data.owner.displayName}</p>
                 <p className="text-muted-foreground">{data.owner.email}</p>
               </div>
               {payment && (
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Plan & amount</p>
+                  <p className="text-xs text-muted-foreground">Plan & amount</p>
                   <p className="font-medium">{payment.planName}</p>
-                  <p className="text-lg font-bold">{money(payment.amountCents, payment.currency)}</p>
+                  <p className="text-lg font-semibold">{money(payment.amountCents, payment.currency)}</p>
                 </div>
               )}
             </div>
@@ -131,7 +126,7 @@ const RegistrationPaymentDialog = ({ ownerId, onClose }: Props) => {
             {payment && (
               <>
                 <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <Badge className={`${STATUS_BADGE[payment.status]} border-0`}>{payment.status}</Badge>
+                  <StatusBadge kind="payment" status={payment.status} />
                   <span className="text-muted-foreground">Uploaded {colomboDateTime(payment.createdAt)}</span>
                   {payment.reviewedAt && (
                     <span className="text-muted-foreground">· Reviewed {colomboDateTime(payment.reviewedAt)}</span>
@@ -210,10 +205,10 @@ const RegistrationPaymentDialog = ({ ownerId, onClose }: Props) => {
 
             {data.history.length > 0 && (
               <div className="space-y-2 border-t pt-4">
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Earlier receipts</p>
+                <p className="text-xs text-muted-foreground">Earlier receipts</p>
                 {data.history.map((h) => (
                   <div key={h.id} className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                    <Badge variant="secondary">{h.status}</Badge>
+                    <StatusBadge kind="payment" status={h.status} />
                     <span>{colomboDateTime(h.createdAt)}</span>
                     {h.rejectionReason && <span>— {h.rejectionReason}</span>}
                   </div>

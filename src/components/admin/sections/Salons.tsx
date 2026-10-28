@@ -1,57 +1,19 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  LogOut, CreditCard, Users, BarChart3, Shield, Globe, Megaphone, Ticket, MessageSquare,
-  Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle, Loader2,
-  CalendarCheck, Building2, RefreshCw, Receipt,
-} from "lucide-react";
-import CampaignRequestManager from "@/components/admin/CampaignRequestManager";
-import PaymentDetailsForm from "@/components/admin/PaymentDetailsForm";
-import RegistrationPaymentDialog from "@/components/admin/RegistrationPaymentDialog";
-import Seo from "@/components/Seo";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ban, CheckCircle, Loader2, RefreshCw, Store, Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
-import { motion } from "framer-motion";
-import {
-  fetchAdminStats, AdminStats,
-  SalonOwnerDto, fetchOwners, suspendOwner, activateOwner,
-  AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
-  WebsiteHeroSlide, WebsiteSettings,
-  fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
-  AdminPromoCodeDto, fetchAdminPromoCodes,
-  OverageInvoiceDto, OverageInvoiceStatus,
-  fetchOveragePrice, saveOveragePrice,
-  fetchOverageInvoices, generateOverageInvoices,
-  sendOverageInvoice, markOverageInvoicePaid, cancelOverageInvoice,
-} from "@/api/admin-api";
-import {
-  AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
-  fetchAdminPlans, createPlan, updatePlan, deletePlan,
-} from "@/api/plans-api";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState, ErrorState, Panel, SectionSkeleton, StatusBadge, SubTabs } from "@/components/app-shell/parts";
+import { draftSalon, fetchAdminSalons, publishSalon, suspendSalon, type AdminSalonDto } from "@/api/admin-api";
 
-/* Moved unchanged from pages/Admin.tsx (feature 004 T015). */
+type Filter = "ALL" | "DRAFT" | "PUBLISHED" | "SUSPENDED";
+const FILTER_LABELS: Record<Filter, string> = { ALL: "All", DRAFT: "Draft", PUBLISHED: "Published", SUSPENDED: "Suspended" };
 
-const SALON_STATUS_META: Record<string, { label: string; badge: string }> = {
-  PUBLISHED: { label: "Published", badge: "bg-green-600 hover:bg-green-700 text-white" },
-  DRAFT:     { label: "Draft",     badge: "bg-yellow-500 hover:bg-yellow-600 text-black" },
-  SUSPENDED: { label: "Suspended", badge: "bg-red-500 hover:bg-red-600 text-white" },
-};
-
+/** Salon moderation: publish, suspend, return to draft — restyled in feature 004. */
 const SalonModeration = () => {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState("ALL");
+  const [filter, setFilter] = useState<Filter>("ALL");
 
   const { data: salons = [], isLoading, isError, refetch, isFetching } = useQuery<AdminSalonDto[]>({
     queryKey: ["admin-salons"],
@@ -60,113 +22,111 @@ const SalonModeration = () => {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-salons"] });
+  const nameOf = (id: string) => salons.find((s) => s.id === id)?.name;
 
   const publishMutation = useMutation({
     mutationFn: (id: string) => publishSalon(id),
-    onSuccess: (_d, id) => { toast.success(`"${salons.find(s => s.id === id)?.name}" published`); invalidate(); },
+    onSuccess: (_d, id) => {
+      toast.success(`"${nameOf(id)}" published`);
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const suspendMutation = useMutation({
     mutationFn: (id: string) => suspendSalon(id),
-    onSuccess: (_d, id) => { toast.info(`"${salons.find(s => s.id === id)?.name}" suspended`); invalidate(); },
+    onSuccess: (_d, id) => {
+      toast.info(`"${nameOf(id)}" suspended`);
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const draftMutation = useMutation({
     mutationFn: (id: string) => draftSalon(id),
-    onSuccess: (_d, id) => { toast.info(`"${salons.find(s => s.id === id)?.name}" moved to draft`); invalidate(); },
+    onSuccess: (_d, id) => {
+      toast.info(`"${nameOf(id)}" moved to draft`);
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const anyMutating = publishMutation.isPending || suspendMutation.isPending || draftMutation.isPending;
-
-  const counts = {
+  const counts: Record<Filter, number> = {
     ALL: salons.length,
-    DRAFT: salons.filter(s => s.status === "DRAFT").length,
-    PUBLISHED: salons.filter(s => s.status === "PUBLISHED").length,
-    SUSPENDED: salons.filter(s => s.status === "SUSPENDED").length,
+    DRAFT: salons.filter((s) => s.status === "DRAFT").length,
+    PUBLISHED: salons.filter((s) => s.status === "PUBLISHED").length,
+    SUSPENDED: salons.filter((s) => s.status === "SUSPENDED").length,
   };
+  const filtered = filter === "ALL" ? salons : salons.filter((s) => s.status === filter);
+  const tabs = (Object.keys(FILTER_LABELS) as Filter[]).map((id) => ({ id, label: `${FILTER_LABELS[id]} (${counts[id]})` }));
 
-  const filtered = filter === "ALL" ? salons : salons.filter(s => s.status === filter);
+  if (isLoading) return <SectionSkeleton />;
+  if (isError) {
+    return (
+      <Panel>
+        <ErrorState message="Failed to load salons." onRetry={() => refetch()} />
+      </Panel>
+    );
+  }
+
+  const iconButton = (label: string, onClick: () => void, busy: boolean, icon: JSX.Element, className: string) => (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={`h-9 w-9 ${className}`}
+      disabled={anyMutating}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+    </Button>
+  );
+  const publishBtn = (s: AdminSalonDto, label: string) =>
+    iconButton(label, () => publishMutation.mutate(s.id), publishMutation.isPending, <CheckCircle className="h-4 w-4" />,
+      "text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800");
+  const suspendBtn = (s: AdminSalonDto) =>
+    iconButton("Suspend salon", () => suspendMutation.mutate(s.id), suspendMutation.isPending, <Ban className="h-4 w-4" />,
+      "text-destructive hover:bg-red-50 hover:text-destructive");
+  const draftBtn = (s: AdminSalonDto) =>
+    iconButton("Move to draft", () => draftMutation.mutate(s.id), draftMutation.isPending, <Undo2 className="h-4 w-4" />,
+      "text-muted-foreground hover:bg-muted hover:text-foreground");
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="font-display text-lg font-semibold">Salon Profile Moderation</h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs uppercase tracking-widest">
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
-          </Button>
-          <div className="flex gap-2 flex-wrap">
-            {(["ALL", "DRAFT", "PUBLISHED", "SUSPENDED"] as const).map(s => (
-              <Button
-                key={s}
-                variant={filter === s ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(s)}
-                className={`capitalize gap-1.5 ${s === "DRAFT" && counts.DRAFT > 0 ? "border-yellow-400" : ""}`}
-              >
-                {s === "ALL" ? "All" : SALON_STATUS_META[s].label}
-                {counts[s] > 0 && (
-                  <span className={`text-[10px] font-bold px-1 rounded-full ${filter === s ? "bg-white/20" : s === "DRAFT" && counts.DRAFT > 0 ? "bg-yellow-400 text-black" : "opacity-60"}`}>
-                    {counts[s]}
-                  </span>
-                )}
-              </Button>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SubTabs tabs={tabs} value={filter} onChange={(id) => setFilter(id as Filter)} />
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2">
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+        </Button>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading salons…</span>
-        </div>
-      )}
-
-      {isError && (
-        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <p className="text-muted-foreground text-sm tracking-wide">Failed to load salons.</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Retry
-          </Button>
-        </div>
-      )}
-
-      {!isLoading && !isError && (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Salon</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Bookings</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Added</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 && (
+      <Panel bodyClassName="p-0">
+        {filtered.length === 0 ? (
+          <EmptyState icon={Store} title="No salons found" description="Try another filter." />
+        ) : (
+          <div className="overflow-x-auto">
+            <Table className="min-w-[820px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12 text-sm tracking-wide">
-                    No salons found.
-                  </TableCell>
+                  <TableHead className="pl-5">Salon</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Bookings</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Added</TableHead>
+                  <TableHead className="pr-5 text-right">Actions</TableHead>
                 </TableRow>
-              )}
-              {filtered.map(s => {
-                const meta = SALON_STATUS_META[s.status];
-                return (
+              </TableHeader>
+              <TableBody>
+                {filtered.map((s) => (
                   <TableRow key={s.id} className={s.status === "SUSPENDED" ? "opacity-60" : ""}>
-                    <TableCell>
+                    <TableCell className="min-w-[200px] pl-5">
                       <div className="font-medium">{s.name}</div>
-                      <div className="text-xs text-muted-foreground font-mono">/{s.slug}</div>
+                      <div className="font-mono text-xs text-muted-foreground">/{s.slug}</div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[220px]">
                       <div className="text-sm">{s.owner.displayName}</div>
                       <div className="text-xs text-muted-foreground">{s.owner.email}</div>
                     </TableCell>
@@ -175,50 +135,35 @@ const SalonModeration = () => {
                     </TableCell>
                     <TableCell className="text-sm font-medium">{s.bookingCount}</TableCell>
                     <TableCell>
-                      <Badge className={`${meta.badge} border-0`}>{meta.label}</Badge>
+                      <StatusBadge kind="salon" status={s.status} />
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {new Date(s.createdAt).toLocaleDateString("en-LK", { year: "numeric", month: "short", day: "numeric" })}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="pr-5">
                       <div className="flex justify-end gap-1">
-                        {/* DRAFT → Publish or Suspend */}
                         {s.status === "DRAFT" && (
                           <>
-                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => publishMutation.mutate(s.id)} title="Publish salon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
-                              {publishMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                            </Button>
-                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => suspendMutation.mutate(s.id)} title="Suspend salon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                              {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-                            </Button>
+                            {publishBtn(s, "Publish salon")}
+                            {suspendBtn(s)}
                           </>
                         )}
-                        {/* PUBLISHED → Suspend only */}
-                        {s.status === "PUBLISHED" && (
-                          <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => suspendMutation.mutate(s.id)} title="Suspend salon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                            {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-                          </Button>
-                        )}
-                        {/* SUSPENDED → Re-publish or move to Draft */}
+                        {s.status === "PUBLISHED" && suspendBtn(s)}
                         {s.status === "SUSPENDED" && (
                           <>
-                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => publishMutation.mutate(s.id)} title="Re-publish salon" className="text-green-600 hover:text-green-700 hover:bg-green-50">
-                              {publishMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                            </Button>
-                            <Button variant="ghost" size="sm" disabled={anyMutating} onClick={() => draftMutation.mutate(s.id)} title="Move to draft" className="text-muted-foreground hover:text-foreground hover:bg-secondary">
-                              {draftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                            </Button>
+                            {publishBtn(s, "Re-publish salon")}
+                            {draftBtn(s)}
                           </>
                         )}
                       </div>
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Panel>
     </div>
   );
 };

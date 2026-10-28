@@ -121,7 +121,7 @@ const WebsiteManager = () => {
     return (
       <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="uppercase tracking-widest text-sm">Loading website settings…</span>
+        <span className="text-sm">Loading website settings…</span>
       </div>
     );
   }
@@ -130,7 +130,7 @@ const WebsiteManager = () => {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
         <AlertTriangle className="h-10 w-10 text-destructive" />
-        <p className="text-muted-foreground text-sm tracking-wide">Failed to load website settings.</p>
+        <p className="text-muted-foreground text-sm">Failed to load website settings.</p>
         <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
           <RefreshCw className="h-4 w-4" /> Retry
         </Button>
@@ -141,30 +141,30 @@ const WebsiteManager = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">Website Management</h2>
+        <h2 className="sr-only">Website management</h2>
       </div>
 
       {settings && <PaymentDetailsForm current={settings.paymentDetails} />}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-          <CardTitle className="text-base font-bold uppercase tracking-widest">Homepage Hero Slides</CardTitle>
+          <CardTitle className="text-base font-semibold">Homepage Hero Slides</CardTitle>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-gold hover:bg-gold/90 text-white rounded-none tracking-widest uppercase text-xs" onClick={() => setEditingSlide(null)}>
+              <Button size="sm" className="text-xs" onClick={() => setEditingSlide(null)}>
                 <Plus className="h-4 w-4 mr-2" /> Add Slide
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <form onSubmit={handleSaveSlide}>
                 <DialogHeader>
-                  <DialogTitle className="font-display uppercase tracking-widest">{editingSlide ? 'Edit Slide' : 'Add New Slide'}</DialogTitle>
+                  <DialogTitle className="font-display">{editingSlide ? 'Edit Slide' : 'Add New Slide'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div>
-                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Media Type</Label>
+                    <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Media Type</Label>
                     <Select name="mediaType" defaultValue={editingSlide?.mediaType || "image"}>
-                      <SelectTrigger className="rounded-none border-black/20"><SelectValue /></SelectTrigger>
+                      <SelectTrigger ><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="image">Image Background</SelectItem>
                         <SelectItem value="video">Video Background</SelectItem>
@@ -172,26 +172,26 @@ const WebsiteManager = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Upload Media</Label>
-                    <Input type="file" name="mediaFile" accept="image/*,video/*" className="rounded-none border-black/20 file:bg-black/5 file:border-0 file:rounded-none file:px-4 file:py-1 file:mr-4 file:uppercase file:tracking-widest file:text-xs" />
-                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest">Simulated upload. Leave empty to keep existing.</p>
+                    <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Upload Media</Label>
+                    <Input type="file" name="mediaFile" accept="image/*,video/*" className="file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1 file:text-xs file:font-medium" />
+                    <p className="text-[10px] text-muted-foreground mt-1">Simulated upload. Leave empty to keep existing.</p>
                   </div>
                   <div>
-                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Main Title</Label>
-                    <Input name="title" defaultValue={editingSlide?.title || ""} className="rounded-none border-black/20" required />
+                    <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Main Title</Label>
+                    <Input name="title" defaultValue={editingSlide?.title || ""} required />
                   </div>
                   <div>
-                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Subtitle / Description</Label>
-                    <Textarea name="subtitle" rows={2} defaultValue={editingSlide?.subtitle || ""} className="rounded-none border-black/20" required />
+                    <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Subtitle / Description</Label>
+                    <Textarea name="subtitle" rows={2} defaultValue={editingSlide?.subtitle || ""} required />
                   </div>
                   <div>
-                    <Label className="uppercase tracking-widest text-xs font-bold text-black/60 mb-2 block">Button Text</Label>
-                    <Input name="buttonText" defaultValue={editingSlide?.buttonText || "Book Now"} className="rounded-none border-black/20" required />
+                    <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Button Text</Label>
+                    <Input name="buttonText" defaultValue={editingSlide?.buttonText || "Book Now"} required />
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-black/10">
-                  <Button type="button" variant="outline" className="rounded-none tracking-widest uppercase text-xs" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-black hover:bg-black/80 text-white rounded-none tracking-widest uppercase text-xs">Save Slide</Button>
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="outline" className="text-xs" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="text-xs">Save Slide</Button>
                 </div>
               </form>
             </DialogContent>
@@ -200,23 +200,23 @@ const WebsiteManager = () => {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-black/10 bg-black/[0.02]">
-                <TableHead className="uppercase tracking-widest text-xs font-bold text-black py-4 px-6 w-[120px]">Media</TableHead>
-                <TableHead className="uppercase tracking-widest text-xs font-bold text-black py-4">Content</TableHead>
-                <TableHead className="uppercase tracking-widest text-xs font-bold text-black py-4 text-right px-6">Actions</TableHead>
+              <TableRow className="border-b bg-black/[0.02]">
+                <TableHead className="text-xs font-semibold py-4 px-6 w-[120px]">Media</TableHead>
+                <TableHead className="text-xs font-semibold py-4">Content</TableHead>
+                <TableHead className="text-xs font-semibold py-4 text-right px-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slides.map(slide => (
                 <TableRow key={slide.id} className="border-b border-black/5">
                   <TableCell className="px-6 py-4">
-                    <div className="w-20 h-12 bg-black/10 relative overflow-hidden group">
+                    <div className="w-20 h-12 rounded-lg bg-black/10 relative overflow-hidden group">
                       {slide.mediaType === 'video' ? (
                         <video src={slide.mediaUrl} className="w-full h-full object-cover" />
                       ) : (
                         <img src={slide.mediaUrl} className="w-full h-full object-cover" alt="slide" />
                       )}
-                      <div className="absolute top-1 right-1 bg-black/80 text-white text-[8px] uppercase tracking-widest px-1 py-0.5">{slide.mediaType}</div>
+                      <div className="absolute top-1 right-1 bg-black/80 text-white text-[8px] px-1 py-0.5">{slide.mediaType}</div>
                     </div>
                   </TableCell>
                   <TableCell className="py-4">
@@ -225,10 +225,10 @@ const WebsiteManager = () => {
                   </TableCell>
                   <TableCell className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 hover:text-black rounded-none" onClick={() => { setEditingSlide(slide); setIsDialogOpen(true); }}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingSlide(slide); setIsDialogOpen(true); }}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-none" onClick={() => handleDelete(slide.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(slide.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -240,29 +240,29 @@ const WebsiteManager = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-black/10">
-        <Card className="rounded-none border border-black/10 shadow-none">
-          <CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">Footer Settings</CardTitle></CardHeader>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
+        <Card className="border">
+          <CardHeader><CardTitle className="text-sm font-semibold">Footer Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Footer Text</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">Footer Text</Label>
               <Input
-                className="rounded-none border-black/20"
+                
                 value={footerText}
                 onChange={e => setFooterText(e.target.value)}
               />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Support Email</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">Support Email</Label>
               <Input
-                className="rounded-none border-black/20"
+                
                 type="email"
                 value={supportEmail}
                 onChange={e => setSupportEmail(e.target.value)}
               />
             </div>
             <Button
-              className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs"
+              className="w-full text-xs"
               onClick={() => footerMutation.mutate()}
               disabled={footerMutation.isPending}
             >
@@ -272,28 +272,28 @@ const WebsiteManager = () => {
           </CardContent>
         </Card>
 
-        <Card className="rounded-none border border-black/10 shadow-none">
-          <CardHeader><CardTitle className="text-sm uppercase tracking-widest font-bold">SEO Settings</CardTitle></CardHeader>
+        <Card className="border">
+          <CardHeader><CardTitle className="text-sm font-semibold">SEO Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Title</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">Meta Title</Label>
               <Input
-                className="rounded-none border-black/20"
+                
                 value={metaTitle}
                 onChange={e => setMetaTitle(e.target.value)}
               />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-widest text-black/60 mb-2 block">Meta Description</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">Meta Description</Label>
               <Textarea
                 rows={2}
-                className="rounded-none border-black/20"
+                
                 value={metaDescription}
                 onChange={e => setMetaDescription(e.target.value)}
               />
             </div>
             <Button
-              className="w-full bg-black hover:bg-black/90 text-white rounded-none uppercase tracking-widest text-xs"
+              className="w-full text-xs"
               onClick={() => seoMutation.mutate()}
               disabled={seoMutation.isPending}
             >

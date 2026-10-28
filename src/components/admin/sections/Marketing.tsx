@@ -41,12 +41,14 @@ import {
   fetchAdminPlans, createPlan, updatePlan, deletePlan,
 } from "@/api/plans-api";
 
+import { ToneBadge } from "@/components/app-shell/parts";
+
 /* Moved unchanged from pages/Admin.tsx (feature 004 T015). */
 
 const PromotionManager = () => (
   <div className="flex flex-col items-center justify-center py-24 gap-3 text-center text-muted-foreground">
     <Megaphone className="h-10 w-10 opacity-30" />
-    <p className="text-sm uppercase tracking-widest">Promotions feature coming soon</p>
+    <p className="text-sm">Promotions feature coming soon</p>
     <p className="text-xs max-w-xs">Banner and placement promotions are not yet supported in the backend.</p>
   </div>
 );
@@ -60,21 +62,21 @@ const CouponManager = () => {
 
   const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString() : "—";
 
-  if (isLoading) return <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm uppercase tracking-widest">Loading…</span></div>;
-  if (isError)  return <div className="flex flex-col items-center justify-center py-20 gap-3"><AlertTriangle className="h-8 w-8 text-destructive" /><Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button></div>;
+  if (isLoading) return <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">Loading…</span></div>;
+  if (isError) return <div className="flex flex-col items-center justify-center py-20 gap-3"><AlertTriangle className="h-8 w-8 text-destructive" /><Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button></div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">Promo Codes</h2>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2 text-xs uppercase tracking-widest">
+        <h2 className="text-base font-semibold">Promo codes</h2>
+        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2 text-xs">
           <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
         </Button>
       </div>
       {codes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-2 text-muted-foreground">
           <Ticket className="h-8 w-8 opacity-30" />
-          <p className="text-sm uppercase tracking-widest">No promo codes yet</p>
+          <p className="text-sm">No promo codes yet</p>
           <p className="text-xs">Codes are generated automatically when SMS campaigns are approved.</p>
         </div>
       ) : (
@@ -100,7 +102,7 @@ const CouponManager = () => {
                   <TableCell>{c.discountPct}%</TableCell>
                   <TableCell>{c.usageCount}{c.usageLimit ? `/${c.usageLimit}` : ""}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{fmt(c.validTo)}</TableCell>
-                  <TableCell><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Active" : "Inactive"}</Badge></TableCell>
+                  <TableCell><ToneBadge tone={c.active ? "success" : "neutral"} label={c.active ? "Active" : "Inactive"} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>

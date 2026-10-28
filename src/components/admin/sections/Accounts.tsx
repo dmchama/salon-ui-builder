@@ -1,63 +1,19 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  LogOut, CreditCard, Users, BarChart3, Shield, Globe, Megaphone, Ticket, MessageSquare,
-  Plus, Edit, Trash2, Eye, Ban, CheckCircle, TrendingUp, DollarSign, Store, AlertTriangle, Loader2,
-  CalendarCheck, Building2, RefreshCw, Receipt,
-} from "lucide-react";
-import CampaignRequestManager from "@/components/admin/CampaignRequestManager";
-import PaymentDetailsForm from "@/components/admin/PaymentDetailsForm";
-import RegistrationPaymentDialog from "@/components/admin/RegistrationPaymentDialog";
-import Seo from "@/components/Seo";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ban, CheckCircle, Loader2, Receipt, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
-import { getAccessToken, getStoredUser } from "@/lib/auth-storage";
-import { motion } from "framer-motion";
-import {
-  fetchAdminStats, AdminStats,
-  SalonOwnerDto, fetchOwners, suspendOwner, activateOwner,
-  AdminSalonDto, fetchAdminSalons, publishSalon, suspendSalon, draftSalon,
-  WebsiteHeroSlide, WebsiteSettings,
-  fetchWebsiteSettings, saveHeroSlides, saveFooterSettings, saveSeoSettings,
-  AdminPromoCodeDto, fetchAdminPromoCodes,
-  OverageInvoiceDto, OverageInvoiceStatus,
-  fetchOveragePrice, saveOveragePrice,
-  fetchOverageInvoices, generateOverageInvoices,
-  sendOverageInvoice, markOverageInvoicePaid, cancelOverageInvoice,
-} from "@/api/admin-api";
-import {
-  AdminPlanDto, CreatePlanPayload, UpdatePlanPayload,
-  fetchAdminPlans, createPlan, updatePlan, deletePlan,
-} from "@/api/plans-api";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState, ErrorState, Panel, SectionSkeleton, StatusBadge, SubTabs, ToneBadge } from "@/components/app-shell/parts";
+import RegistrationPaymentDialog from "@/components/admin/RegistrationPaymentDialog";
+import { activateOwner, fetchOwners, suspendOwner, type SalonOwnerDto } from "@/api/admin-api";
 
-/* Moved unchanged from pages/Admin.tsx (feature 004 T015). */
+type Filter = "all" | "active" | "pending" | "suspended";
 
-const STATUS_COLORS: Record<string, string> = {
-  active: "bg-green-600 hover:bg-green-700 text-white",
-  suspended: "bg-red-500 hover:bg-red-600 text-white",
-  pending: "bg-yellow-500 hover:bg-yellow-600 text-black",
-};
-
-const PAYMENT_BADGE: Record<string, { label: string; className: string }> = {
-  PENDING: { label: "Pending", className: "bg-yellow-500 text-black" },
-  APPROVED: { label: "Approved", className: "bg-green-600 text-white" },
-  REJECTED: { label: "Rejected", className: "bg-red-500 text-white" },
-};
-
+/** Salon owner accounts with payment review (feature 002) — restyled in feature 004. */
 const AccountManager = () => {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState<Filter>("all");
   const [reviewOwnerId, setReviewOwnerId] = useState<string | null>(null);
 
   const { data: owners = [], isLoading, isError, refetch, isFetching } = useQuery<SalonOwnerDto[]>({
@@ -71,7 +27,7 @@ const AccountManager = () => {
   const suspendMutation = useMutation({
     mutationFn: (id: string) => suspendOwner(id),
     onSuccess: (_d, id) => {
-      toast.info(`${owners.find(o => o.id === id)?.displayName ?? "Owner"} suspended`);
+      toast.info(`${owners.find((o) => o.id === id)?.displayName ?? "Owner"} suspended`);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -80,167 +36,151 @@ const AccountManager = () => {
   const activateMutation = useMutation({
     mutationFn: (id: string) => activateOwner(id),
     onSuccess: (_d, id) => {
-      toast.success(`${owners.find(o => o.id === id)?.displayName ?? "Owner"} activated`);
+      toast.success(`${owners.find((o) => o.id === id)?.displayName ?? "Owner"} activated`);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const anyPending = suspendMutation.isPending || activateMutation.isPending;
-  const filtered = filter === "all" ? owners : owners.filter(o => o.status === filter);
-  const counts = {
+  const filtered = filter === "all" ? owners : owners.filter((o) => o.status === filter);
+  const counts: Record<Filter, number> = {
     all: owners.length,
-    active: owners.filter(o => o.status === "active").length,
-    suspended: owners.filter(o => o.status === "suspended").length,
-    pending: owners.filter(o => o.status === "pending").length,
+    active: owners.filter((o) => o.status === "active").length,
+    pending: owners.filter((o) => o.status === "pending").length,
+    suspended: owners.filter((o) => o.status === "suspended").length,
   };
+  const tabs = (["all", "pending", "active", "suspended"] as const).map((id) => ({
+    id,
+    label: `${id === "all" ? "All" : id.charAt(0).toUpperCase() + id.slice(1)} (${counts[id]})`,
+  }));
+
+  if (isLoading) return <SectionSkeleton />;
+  if (isError) {
+    return (
+      <Panel>
+        <ErrorState message="Failed to load accounts." onRetry={() => refetch()} />
+      </Panel>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="font-display text-lg font-semibold">Salon Owner Accounts</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs uppercase tracking-widest">
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
-          </Button>
-          <div className="flex gap-2 flex-wrap">
-            {(["all", "active", "pending", "suspended"] as const).map(s => (
-              <Button
-                key={s}
-                variant={filter === s ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(s)}
-                className={`capitalize gap-1.5 ${s === "pending" && counts.pending > 0 ? "border-yellow-400" : ""}`}
-              >
-                {s}
-                {counts[s] > 0 && (
-                  <span className={`text-[10px] font-bold px-1 rounded-full ${filter === s ? "bg-white/20" : s === "pending" && counts.pending > 0 ? "bg-yellow-400 text-black" : "opacity-60"}`}>
-                    {counts[s]}
-                  </span>
-                )}
-              </Button>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SubTabs tabs={tabs} value={filter} onChange={(id) => setFilter(id as Filter)} />
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2">
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+        </Button>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading accounts…</span>
-        </div>
-      )}
-
-      {isError && (
-        <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-          <AlertTriangle className="h-10 w-10 text-destructive" />
-          <p className="text-muted-foreground text-sm tracking-wide">Failed to load accounts.</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Retry
-          </Button>
-        </div>
-      )}
-
-      {!isLoading && !isError && (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Owner</TableHead>
-                <TableHead>Salons</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 && (
+      <Panel bodyClassName="p-0">
+        {filtered.length === 0 ? (
+          <EmptyState icon={Users} title="No accounts found" description="Try another filter." />
+        ) : (
+          <div className="overflow-x-auto">
+            <Table className="min-w-[860px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-12 text-sm tracking-wide">
-                    No accounts found.
-                  </TableCell>
+                  <TableHead className="pl-5">Owner</TableHead>
+                  <TableHead>Salons</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Payment</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead className="pr-5 text-right">Actions</TableHead>
                 </TableRow>
-              )}
-              {filtered.map(o => (
-                <TableRow key={o.id} className={o.status === "suspended" ? "opacity-60" : ""}>
-                  <TableCell>
-                    <div className="font-medium">{o.displayName}</div>
-                    <div className="text-xs text-muted-foreground">{o.email}</div>
-                    {o.phone && <div className="text-xs text-muted-foreground">{o.phone}</div>}
-                  </TableCell>
-                  <TableCell>
-                    {o.salons.length === 0
-                      ? <span className="text-xs text-muted-foreground">No salons yet</span>
-                      : o.salons.map(s => (
-                        <div key={s.id} className="text-sm leading-5">
-                          {s.name}
-                          <span className={`ml-1.5 text-[10px] uppercase tracking-widest font-semibold ${s.status === "PUBLISHED" ? "text-green-600" : s.status === "SUSPENDED" ? "text-red-500" : "text-muted-foreground"}`}>
-                            {s.status}
-                          </span>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((o) => (
+                  <TableRow key={o.id} className={o.status === "suspended" ? "opacity-60" : ""}>
+                    <TableCell className="pl-5">
+                      <div className="font-medium">{o.displayName}</div>
+                      <div className="text-xs text-muted-foreground">{o.email}</div>
+                      {o.phone && <div className="text-xs text-muted-foreground">{o.phone}</div>}
+                    </TableCell>
+                    <TableCell className="min-w-[200px]">
+                      {o.salons.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">No salons yet</span>
+                      ) : (
+                        <div className="space-y-1">
+                          {o.salons.map((s) => (
+                            <div key={s.id} className="flex flex-wrap items-center gap-1.5 text-sm">
+                              {s.name}
+                              <StatusBadge kind="salon" status={s.status} />
+                            </div>
+                          ))}
                         </div>
-                      ))
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {o.subscription
-                      ? <Badge variant="secondary">{o.subscription.planName}</Badge>
-                      : <span className="text-xs text-muted-foreground">No plan</span>
-                    }
-                  </TableCell>
-                  <TableCell>
-                    {o.registrationPayment
-                      ? <Badge className={`${PAYMENT_BADGE[o.registrationPayment.status]?.className ?? ""} border-0`}>
-                          {PAYMENT_BADGE[o.registrationPayment.status]?.label ?? o.registrationPayment.status}
-                        </Badge>
-                      : <span className="text-xs text-muted-foreground">No receipt</span>
-                    }
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`${STATUS_COLORS[o.status] ?? ""} border-0 capitalize`}>
-                      {o.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(o.joinedAt).toLocaleDateString("en-LK", { year: "numeric", month: "short", day: "numeric" })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {/* Receipt review — approval of PENDING owners happens in the dialog (spec 002 AC17) */}
-                      {o.registrationPayment && (
-                        <Button variant="ghost" size="sm" onClick={() => setReviewOwnerId(o.id)} title="Review payment" className="gap-1 text-xs">
-                          <Receipt className="h-4 w-4" /> {o.status === "pending" && o.registrationPayment.status === "PENDING" ? "Review payment" : "Receipt"}
-                        </Button>
                       )}
-                      {/* PENDING → Approve or Suspend */}
-                      {o.status === "pending" && (
-                        <>
-                          <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => suspendMutation.mutate(o.id)} title="Reject / suspend" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    </TableCell>
+                    <TableCell>
+                      {o.subscription ? (
+                        <ToneBadge tone="neutral" label={o.subscription.planName} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No plan</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {o.registrationPayment ? (
+                        <StatusBadge kind="payment" status={o.registrationPayment.status} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No receipt</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge kind="account" status={o.status} />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {new Date(o.joinedAt).toLocaleDateString("en-LK", { year: "numeric", month: "short", day: "numeric" })}
+                    </TableCell>
+                    <TableCell className="pr-5">
+                      <div className="flex justify-end gap-1">
+                        {/* Approval of PENDING owners happens in the payment dialog (spec 002 AC17). */}
+                        {o.registrationPayment && (
+                          <Button
+                            variant={o.status === "pending" && o.registrationPayment.status === "PENDING" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setReviewOwnerId(o.id)}
+                            className="gap-1.5"
+                          >
+                            <Receipt className="h-4 w-4" />
+                            {o.status === "pending" && o.registrationPayment.status === "PENDING" ? "Review payment" : "Receipt"}
+                          </Button>
+                        )}
+                        {(o.status === "pending" || o.status === "active") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-destructive hover:bg-red-50 hover:text-destructive"
+                            disabled={anyPending}
+                            onClick={() => suspendMutation.mutate(o.id)}
+                            aria-label={o.status === "pending" ? "Reject or suspend account" : "Suspend account"}
+                            title={o.status === "pending" ? "Reject / suspend" : "Suspend account"}
+                          >
                             {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
                           </Button>
-                        </>
-                      )}
-                      {/* ACTIVE → Suspend only */}
-                      {o.status === "active" && (
-                        <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => suspendMutation.mutate(o.id)} title="Suspend account" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                          {suspendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-                        </Button>
-                      )}
-                      {/* SUSPENDED → Activate only */}
-                      {o.status === "suspended" && (
-                        <Button variant="ghost" size="sm" disabled={anyPending} onClick={() => activateMutation.mutate(o.id)} title="Reactivate account" className="text-primary hover:text-primary hover:bg-primary/10">
-                          {activateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+                        )}
+                        {o.status === "suspended" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                            disabled={anyPending}
+                            onClick={() => activateMutation.mutate(o.id)}
+                            aria-label="Reactivate account"
+                            title="Reactivate account"
+                          >
+                            {activateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Panel>
       <RegistrationPaymentDialog ownerId={reviewOwnerId} onClose={() => setReviewOwnerId(null)} />
     </div>
   );

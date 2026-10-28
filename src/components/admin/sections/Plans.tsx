@@ -41,6 +41,8 @@ import {
   fetchAdminPlans, createPlan, updatePlan, deletePlan,
 } from "@/api/plans-api";
 
+import { ToneBadge } from "@/components/app-shell/parts";
+
 /* Moved unchanged from pages/Admin.tsx (feature 004 T015). */
 
 type PlanFormState = {
@@ -166,9 +168,9 @@ const SubscriptionManager = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">Subscription Plans</h2>
+        <h2 className="sr-only">Subscription plans</h2>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs uppercase tracking-widest">
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1 text-xs">
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} /> Refresh
           </Button>
           <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (!o) setCreateForm(emptyForm()); }}>
@@ -194,14 +196,14 @@ const SubscriptionManager = () => {
       {isLoading && (
         <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="uppercase tracking-widest text-sm">Loading plans…</span>
+          <span className="text-sm">Loading plans…</span>
         </div>
       )}
 
       {isError && (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
           <AlertTriangle className="h-10 w-10 text-destructive" />
-          <p className="text-muted-foreground tracking-wide text-sm">Failed to load plans.</p>
+          <p className="text-muted-foreground text-sm">Failed to load plans.</p>
           <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" /> Retry
           </Button>
@@ -215,9 +217,9 @@ const SubscriptionManager = () => {
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-display font-semibold text-lg">{p.name}</span>
-                  <Badge variant={p.active ? "default" : "secondary"}>{p.active ? "Active" : "Inactive"}</Badge>
+                  <ToneBadge tone={p.active ? "success" : "neutral"} label={p.active ? "Active" : "Inactive"} />
                 </div>
-                <div className="text-2xl font-bold font-display">
+                <div className="text-2xl font-semibold font-display">
                   {p.priceCents === 0 ? "Free" : `Rs. ${(p.priceCents / 100).toLocaleString("en-LK")}`}
                   <span className="text-sm text-muted-foreground font-normal">
                     {p.priceCents > 0 ? intervalLabel(p.intervalMonths) : ""}
@@ -246,7 +248,7 @@ const SubscriptionManager = () => {
             </Card>
           ))}
           {plans.length === 0 && (
-            <div className="col-span-3 py-16 text-center text-muted-foreground text-sm tracking-wide">
+            <div className="col-span-3 py-16 text-center text-muted-foreground text-sm">
               No plans yet. Click "Add Plan" to create one.
             </div>
           )}

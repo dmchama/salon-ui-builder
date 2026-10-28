@@ -20,7 +20,7 @@ import {
 } from "@/api/admin-api";
 
 function StatusBadge({ status }: { status: AdminCampaignRequestDto["status"] }) {
-  if (status === "APPROVED") return <Badge className="bg-green-100 text-green-700 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
+  if (status === "APPROVED") return <Badge className="bg-green-100 text-emerald-700 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
   if (status === "REJECTED") return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
   return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
 }
@@ -158,7 +158,7 @@ const CampaignRequestManager = () => {
                     <TableCell className="text-sm">Rs. {(req.priceCents / 100).toFixed(0)}</TableCell>
                     <TableCell>
                       {req.receiptUrl
-                        ? <a href={req.receiptUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Receipt className="h-3 w-3" />View</a>
+                        ? <a href={req.receiptUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-gold-strong hover:underline"><Receipt className="h-3 w-3" />View</a>
                         : <span className="text-xs text-muted-foreground">None</span>}
                     </TableCell>
                     <TableCell>
@@ -247,7 +247,7 @@ const CampaignRequestManager = () => {
               </div>
               {detailTarget.receiptUrl && (
                 <a href={detailTarget.receiptUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-blue-600 hover:underline text-xs">
+                  className="flex items-center gap-1.5 text-gold-strong hover:underline text-xs">
                   <ExternalLink className="h-3.5 w-3.5" /> View Payment Receipt
                 </a>
               )}
