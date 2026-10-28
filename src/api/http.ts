@@ -40,11 +40,18 @@ export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Pr
   }
 
   const text = await res.text();
-  const data = text ? (JSON.parse(text) as unknown) : null;
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // Non-JSON body, e.g. an HTML error page from a proxy (413 Request Entity Too Large).
+    if (res.ok) throw new ApiError("Unexpected response from the server", res.status);
+  }
 
   if (!res.ok) {
     const body = data as Partial<ApiErrorBody> | null;
-    const message = body?.message ?? res.statusText;
+    const message =
+      body?.message ?? (res.status === 413 ? "The file is too large to upload." : res.statusText || "Request failed");
     if (res.status === 401 && !skipAuth) {
       clearAuth();
       window.location.href = "/login";
