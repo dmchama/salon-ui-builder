@@ -80,6 +80,8 @@ export type PublicSalonTechnician = {
   phone: string | null;
   email: string | null;
   specialization: string | null;
+  /** Public team photo (Cloudinary), feature 005. */
+  photoUrl: string | null;
   active: boolean;
   sortOrder: number;
   createdAt: string;

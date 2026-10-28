@@ -1,3 +1,4 @@
+import TeamAvatar from "@/components/TeamAvatar";
 import { ArrowRight, Loader2, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PublicSalonDetail, PublicSalonService } from "@/api/salon-api";
@@ -9,6 +10,8 @@ type Props = {
   service?: PublicSalonService;
   /** Technician name, or undefined for "any professional". */
   professionalName?: string;
+  /** Technician photo (feature 005). */
+  professionalPhotoUrl?: string | null;
   discountPct?: number;
   date?: string;
   time?: string;
@@ -23,6 +26,7 @@ const BookingSummary = ({
   salon,
   service,
   professionalName,
+  professionalPhotoUrl,
   discountPct,
   date,
   time,
@@ -78,9 +82,10 @@ const BookingSummary = ({
               <p className="text-gray-900">{service.name}</p>
               <p className="text-gray-900 shrink-0">{formatLkr(price)}</p>
             </div>
-            <p className="text-sm text-gray-500">
-              {formatDuration(service.durationMin)} with{" "}
-              <span className="text-gold">{professionalName ?? "any professional"}</span>
+            <p className="flex flex-wrap items-center gap-1.5 text-sm text-gray-500">
+              {formatDuration(service.durationMin)} with
+              {professionalName && <TeamAvatar name={professionalName} photoUrl={professionalPhotoUrl} size={24} />}
+              <span className="text-gold-strong">{professionalName ?? "any professional"}</span>
             </p>
             {date && time && (
               <p className="text-sm text-gray-500">

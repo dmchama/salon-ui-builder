@@ -1,3 +1,4 @@
+import TeamAvatar from "@/components/TeamAvatar";
 import { Link } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -90,7 +91,12 @@ const BookingSuccess = ({ booking, salon, service, technicians, paymentOption }:
         {preferredTechRow && (
           <div className="flex justify-between text-sm py-2.5 border-b border-gray-100 gap-4">
             <span className="text-gray-400 shrink-0">Technician</span>
-            <span className="font-semibold text-gray-900 text-right">
+            <span className="flex items-center justify-end gap-2 font-semibold text-gray-900 text-right">
+              <TeamAvatar
+                name={preferredTechRow.name}
+                photoUrl={technicians.find((t) => t.id === preferredTechRow.id)?.photoUrl}
+                size={28}
+              />
               {preferredTechRow.name}
               {preferredTechRow.specialization ? ` · ${preferredTechRow.specialization}` : ""}
             </span>

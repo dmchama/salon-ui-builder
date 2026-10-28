@@ -44,3 +44,14 @@ export async function updateTechnician(
     body: JSON.stringify(payload),
   });
 }
+
+/** Upload or replace a team member photo (spec 005). Send the already-resized file. */
+export async function uploadTechnicianPhoto(technicianId: string, photo: File): Promise<ManagedTechnician> {
+  const form = new FormData();
+  form.append("photo", photo);
+  return apiRequest<ManagedTechnician>(`/technicians/${encodeURIComponent(technicianId)}/photo`, { method: "POST", body: form });
+}
+
+export async function removeTechnicianPhoto(technicianId: string): Promise<ManagedTechnician> {
+  return apiRequest<ManagedTechnician>(`/technicians/${encodeURIComponent(technicianId)}/photo`, { method: "DELETE" });
+}

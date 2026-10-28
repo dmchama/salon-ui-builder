@@ -1,3 +1,4 @@
+import TeamAvatar from "@/components/TeamAvatar";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ChevronDown, Phone, UserRound } from "lucide-react";
@@ -81,9 +82,13 @@ const TimeStep = ({
         {technicians.length > 0 ? (
           <Select value={technicianId || ANY} onValueChange={(v) => onTechnicianChange(v === ANY ? "" : v)}>
             <SelectTrigger className="w-auto h-12 rounded-full border-gray-200 bg-white pl-2 pr-4 gap-2 text-base [&>svg:last-child]:hidden focus:ring-gold/40">
-              <span className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center">
-                <UserRound className="h-4 w-4 text-gold" />
-              </span>
+              {selectedTech ? (
+                <TeamAvatar name={selectedTech.name} photoUrl={selectedTech.photoUrl} size={32} />
+              ) : (
+                <span className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center">
+                  <UserRound className="h-4 w-4 text-gold" />
+                </span>
+              )}
               <span className="text-gray-900">{selectedTech?.name ?? "Any professional"}</span>
               <ChevronDown className="h-4 w-4 text-gray-900" />
             </SelectTrigger>
@@ -91,8 +96,11 @@ const TimeStep = ({
               <SelectItem value={ANY}>Any professional</SelectItem>
               {technicians.map((t) => (
                 <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                  {t.specialization ? ` · ${t.specialization}` : ""}
+                  <span className="flex items-center gap-2">
+                    <TeamAvatar name={t.name} photoUrl={t.photoUrl} size={24} />
+                    {t.name}
+                    {t.specialization ? ` · ${t.specialization}` : ""}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

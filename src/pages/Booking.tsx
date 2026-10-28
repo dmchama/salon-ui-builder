@@ -272,6 +272,7 @@ const Booking = () => {
             salon={salon}
             service={service}
             professionalName={technicians.find((t) => t.id === selectedTechnician)?.name}
+            professionalPhotoUrl={technicians.find((t) => t.id === selectedTechnician)?.photoUrl}
             discountPct={promoApplies ? promoInfo?.discountPct : undefined}
             date={date}
             time={time}

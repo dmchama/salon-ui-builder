@@ -23,9 +23,13 @@ import { toast } from "sonner";
 import {
   createTechnician,
   fetchManagedTechnicians,
+  removeTechnicianPhoto,
   updateTechnician,
+  uploadTechnicianPhoto,
   type ManagedTechnician,
 } from "@/api/technicians-api";
+import TeamAvatar from "@/components/TeamAvatar";
+import TeamPhotoPicker, { type PhotoChange } from "@/components/dashboard/TeamPhotoPicker";
 import { ApiError } from "@/api/http";
 
 type FormState = {
@@ -126,6 +130,9 @@ const TechnicianManager = ({ salonId }: Props) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [toDeactivate, setToDeactivate] = useState<ManagedTechnician | null>(null);
+  const [newPhoto, setNewPhoto] = useState<PhotoChange>({ kind: "keep" });
+  const [editPhoto, setEditPhoto] = useState<PhotoChange>({ kind: "keep" });
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   const { data: technicians = [], isLoading } = useQuery({
     queryKey: ["managed-technicians", salonId],
@@ -137,6 +144,22 @@ const TechnicianManager = ({ salonId }: Props) => {
     await queryClient.invalidateQueries({ queryKey: ["managed-technicians", salonId] });
     await queryClient.invalidateQueries({ queryKey: ["owner-dashboard"] });
     await queryClient.invalidateQueries({ queryKey: ["salon-public"] });
+  };
+
+  /**
+   * Upload or remove the photo after the details are saved (spec 005 AC8): if this fails the
+   * details stay saved and the owner can retry from Edit.
+   */
+  const applyPhoto = async (technicianId: string, change: PhotoChange): Promise<boolean> => {
+    if (change.kind === "keep") return true;
+    try {
+      if (change.kind === "set") await uploadTechnicianPhoto(technicianId, change.file);
+      else await removeTechnicianPhoto(technicianId);
+      return true;
+    } catch {
+      toast.error(`Saved, but the photo couldn't be ${change.kind === "set" ? "uploaded" : "removed"}. Try again from Edit.`);
+      return false;
+    }
   };
 
   const createMut = useMutation({
@@ -151,11 +174,13 @@ const TechnicianManager = ({ salonId }: Props) => {
         specialization: newForm.specialization.trim() || undefined,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      const photoOk = await applyPhoto(created.id, newPhoto);
       await invalidate();
       setNewForm(emptyForm);
+      setNewPhoto({ kind: "keep" });
       setIsAddOpen(false);
-      toast.success("Technician added");
+      if (photoOk) toast.success("Team member added");
     },
     onError: (err: unknown) => {
       toast.error(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed");
@@ -174,11 +199,13 @@ const TechnicianManager = ({ salonId }: Props) => {
         active: editForm.active,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (updated) => {
+      const photoOk = await applyPhoto(updated.id, editPhoto);
       await invalidate();
       setIsEditOpen(false);
       setEditing(null);
-      toast.success("Saved");
+      setEditPhoto({ kind: "keep" });
+      if (photoOk) toast.success("Saved");
     },
     onError: (err: unknown) => {
       toast.error(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed");
@@ -211,6 +238,7 @@ const TechnicianManager = ({ salonId }: Props) => {
   const openEdit = (t: ManagedTechnician) => {
     setEditing(t);
     setEditForm(techToForm(t));
+    setEditPhoto({ kind: "keep" });
     setIsEditOpen(true);
   };
 
@@ -240,19 +268,28 @@ const TechnicianManager = ({ salonId }: Props) => {
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1">
-              <Plus className="h-4 w-4" /> Add technician
+              <Plus className="h-4 w-4" /> Add team member
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="font-display">New technician</DialogTitle>
+              <DialogTitle>New team member</DialogTitle>
             </DialogHeader>
+            <TeamPhotoPicker
+              name={newForm.name}
+              currentUrl={null}
+              change={newPhoto}
+              onChange={setNewPhoto}
+              onPreparingChange={setPhotoBusy}
+              disabled={createMut.isPending}
+            />
             <TechForm form={newForm} onChange={(f, v) => setNewForm((p) => ({ ...p, [f]: v }))} />
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+              <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || photoBusy}>
+                {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save
               </Button>
             </div>
@@ -266,9 +303,7 @@ const TechnicianManager = ({ salonId }: Props) => {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 flex-1 min-w-0">
-                  <div className="w-12 h-12 shrink-0 rounded-full bg-gold/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-gold-strong" aria-hidden="true" />
-                  </div>
+                  <TeamAvatar name={t.name} photoUrl={t.photoUrl} size={48} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-medium text-sm">{t.name}</h3>
@@ -292,8 +327,10 @@ const TechnicianManager = ({ salonId }: Props) => {
                     checked={t.active}
                     onCheckedChange={() => toggleMut.mutate(t)}
                     disabled={toggleMut.isPending}
+                    aria-label={`${t.active ? "Hide" : "Show"} ${t.name} on the booking page`}
                   />
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)} aria-label={`Edit ${t.name}`} title="Edit">
+
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button
@@ -341,8 +378,18 @@ const TechnicianManager = ({ salonId }: Props) => {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Edit technician</DialogTitle>
+            <DialogTitle>Edit team member</DialogTitle>
           </DialogHeader>
+          {editing && (
+            <TeamPhotoPicker
+              name={editForm.name}
+              currentUrl={editing.photoUrl}
+              change={editPhoto}
+              onChange={setEditPhoto}
+              onPreparingChange={setPhotoBusy}
+              disabled={updateMut.isPending}
+            />
+          )}
           {editing && (
             <TechForm
               form={editForm}
@@ -354,7 +401,8 @@ const TechnicianManager = ({ salonId }: Props) => {
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
+            <Button onClick={() => updateMut.mutate()} disabled={updateMut.isPending || photoBusy}>
+              {updateMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save
             </Button>
           </div>
