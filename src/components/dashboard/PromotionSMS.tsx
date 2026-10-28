@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Loader2, Users, Upload, FileText, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Plus, Loader2, Users, CheckCircle2, Clock, XCircle } from "lucide-react";
+import ReceiptDropzone from "@/components/registration/ReceiptDropzone";
 import { toast } from "sonner";
 import {
   fetchOwnerCampaignCustomers,
@@ -63,7 +64,6 @@ const PromotionSMS = ({ salonId }: Props) => {
   const queryClient = useQueryClient();
   const [composeOpen, setComposeOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
-  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   const [campaignName, setCampaignName] = useState("");
   const [segment, setSegment] = useState("all");
@@ -75,6 +75,7 @@ const PromotionSMS = ({ salonId }: Props) => {
   const [message, setMessage] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreparing, setReceiptPreparing] = useState(false);
 
   const { data: priceData } = useQuery<{ priceCents: number }>({
     queryKey: ["ownerSmsCampaignPrice"],
@@ -266,23 +267,18 @@ const PromotionSMS = ({ salonId }: Props) => {
                     </div>
                   </div>
                   <p className="text-xs text-amber-700">Please make the payment and upload your receipt below.</p>
-                  <input
-                    ref={receiptInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="hidden"
-                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  {/* Campaign API doesn't take HEIC: convert it or refuse (spec 003 AC12). */}
+                  <ReceiptDropzone
+                    file={receiptFile}
+                    onChange={setReceiptFile}
+                    disabled={submitting}
+                    allowHeic={false}
+                    onPreparingChange={setReceiptPreparing}
                   />
-                  <Button type="button" variant="outline" size="sm" className="gap-2 w-full"
-                    onClick={() => receiptInputRef.current?.click()}>
-                    {receiptFile
-                      ? <><FileText className="h-4 w-4 text-green-600" /><span className="truncate max-w-[200px]">{receiptFile.name}</span></>
-                      : <><Upload className="h-4 w-4" /> Upload Receipt</>}
-                  </Button>
                 </div>
               )}
 
-              <Button className="w-full" disabled={!canSubmit || (perSmsPriceCents > 0 && !receiptFile)} onClick={() => doSubmit()}>
+              <Button className="w-full" disabled={!canSubmit || receiptPreparing || (perSmsPriceCents > 0 && !receiptFile)} onClick={() => doSubmit()}>
                 {submitting
                   ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Submitting…</>
                   : <>Submit Request{perSmsPriceCents > 0 && recipientCount > 0 ? ` · Rs. ${(totalPriceCents / 100).toFixed(2)}` : ""}</>}

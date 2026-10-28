@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Copy, Landmark, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ const PaymentStep = ({ planName, amountLabel, receipt, onReceiptChange, onBack, 
     queryFn: fetchPublicWebsiteSettings,
   });
   const details = settings?.paymentDetails ?? null;
+  const [preparing, setPreparing] = useState(false);
 
   const copyAccountNumber = async () => {
     if (!details) return;
@@ -126,7 +128,12 @@ const PaymentStep = ({ planName, amountLabel, receipt, onReceiptChange, onBack, 
 
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 tracking-wide">Payment receipt</p>
-              <ReceiptDropzone file={receipt} onChange={onReceiptChange} disabled={submitting} />
+              <ReceiptDropzone
+                file={receipt}
+                onChange={onReceiptChange}
+                disabled={submitting}
+                onPreparingChange={setPreparing}
+              />
             </div>
           </>
         )}
@@ -143,7 +150,7 @@ const PaymentStep = ({ planName, amountLabel, receipt, onReceiptChange, onBack, 
           <Button
             onClick={onSubmit}
             className="gap-2 rounded-xl h-11 px-6 bg-gold hover:bg-gold/90 text-white font-semibold"
-            disabled={submitting || !details || !receipt}
+            disabled={submitting || preparing || !details || !receipt}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Complete registration <ArrowRight className="h-4 w-4" />

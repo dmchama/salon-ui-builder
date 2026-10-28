@@ -1,19 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { FileText, ImageIcon, Upload, X } from "lucide-react";
+import { FileText, ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isPreviewableImage, RECEIPT_ACCEPT, validateReceiptFile } from "@/lib/receipt-file";
+import { formatBytes, isPreviewableImage, RECEIPT_ACCEPT, RECEIPT_UPLOAD_LIMIT_BYTES } from "@/lib/receipt-file";
+import { prepareReceipt } from "@/lib/receipt-compress";
 
 type Props = {
   file: File | null;
   onChange: (file: File | null) => void;
   disabled?: boolean;
+  /** false where the API can't take HEIC (SMS campaigns): HEIC is converted to JPEG or refused. */
+  allowHeic?: boolean;
+  /** Lets the parent keep its submit button disabled while a photo is being resized. */
+  onPreparingChange?: (preparing: boolean) => void;
 };
 
-/** Click or drag-and-drop area for one payment receipt (spec 002 AC4, AC6). */
-const ReceiptDropzone = ({ file, onChange, disabled }: Props) => {
+/**
+ * Click or drag-and-drop area for one payment receipt (spec 002 AC4, AC6). Large photos are
+ * resized in the browser before they are handed to the parent (spec 003).
+ */
+const ReceiptDropzone = ({ file, onChange, disabled, allowHeic = true, onPreparingChange }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [originalSize, setOriginalSize] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,18 +36,37 @@ const ReceiptDropzone = ({ file, onChange, disabled }: Props) => {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const pick = (picked: File | undefined) => {
-    if (!picked) return;
-    const problem = validateReceiptFile(picked);
-    setError(problem);
-    if (!problem) onChange(picked);
+  const setBusy = (busy: boolean) => {
+    setPreparing(busy);
+    onPreparingChange?.(busy);
+  };
+
+  const pick = async (picked: File | undefined) => {
+    if (!picked || preparing) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await prepareReceipt(picked, { allowHeic });
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setOriginalSize(result.originalSize ?? null);
+      onChange(result.file);
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   };
 
   const remove = () => {
     onChange(null);
     setError(null);
+    setOriginalSize(null);
     if (inputRef.current) inputRef.current.value = "";
   };
+
+  const locked = disabled || preparing;
 
   return (
     <div className="space-y-2">
@@ -46,11 +75,15 @@ const ReceiptDropzone = ({ file, onChange, disabled }: Props) => {
         type="file"
         accept={RECEIPT_ACCEPT}
         className="hidden"
-        disabled={disabled}
+        disabled={locked}
         onChange={(e) => pick(e.target.files?.[0])}
       />
 
-      {file ? (
+      {preparing ? (
+        <div className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gold/60 bg-gold/5 px-4 py-8 text-sm text-gray-700">
+          <Loader2 className="h-5 w-5 animate-spin text-gold" /> Preparing image…
+        </div>
+      ) : file ? (
         <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
           {previewUrl ? (
             <img src={previewUrl} alt="Receipt preview" className="h-16 w-16 rounded-lg object-cover" />
@@ -61,24 +94,27 @@ const ReceiptDropzone = ({ file, onChange, disabled }: Props) => {
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-gray-900">{file.name}</p>
-            <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+            <p className="text-xs text-gray-500">
+              {formatBytes(file.size)}
+              {originalSize ? ` · resized from ${formatBytes(originalSize)}` : ""}
+            </p>
             <button
               type="button"
               className="mt-1 text-xs font-semibold text-gold hover:underline"
               onClick={() => inputRef.current?.click()}
-              disabled={disabled}
+              disabled={locked}
             >
               Replace
             </button>
           </div>
-          <Button type="button" variant="ghost" size="icon" onClick={remove} disabled={disabled} aria-label="Remove receipt">
+          <Button type="button" variant="ghost" size="icon" onClick={remove} disabled={locked} aria-label="Remove receipt">
             <X className="h-4 w-4" />
           </Button>
         </div>
       ) : (
         <button
           type="button"
-          disabled={disabled}
+          disabled={locked}
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
@@ -96,7 +132,9 @@ const ReceiptDropzone = ({ file, onChange, disabled }: Props) => {
         >
           <Upload className="h-6 w-6 text-gold" />
           <span className="text-sm font-semibold text-gray-800">Click or drag your receipt here</span>
-          <span className="text-xs text-gray-500">JPG, PNG, WEBP, HEIC or PDF — up to 5 MB</span>
+          <span className="text-xs text-gray-500">
+            Photos are resized automatically. PDF up to {formatBytes(RECEIPT_UPLOAD_LIMIT_BYTES)}.
+          </span>
         </button>
       )}
 

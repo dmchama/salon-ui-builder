@@ -91,7 +91,10 @@ const Register = () => {
     } catch (err) {
       // Stay on the payment step with everything kept so the user can retry (AC8).
       const msg =
-        err instanceof ApiError ? (err.code && RECEIPT_ERRORS[err.code]) || err.message : "Registration failed.";
+        err instanceof ApiError
+          ? (err.code && RECEIPT_ERRORS[err.code]) ||
+            (err.statusCode === 413 ? "The file is too large to upload." : err.message)
+          : "Registration failed.";
       toast.error(msg);
     } finally {
       setSubmitting(false);

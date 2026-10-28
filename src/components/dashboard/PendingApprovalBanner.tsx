@@ -16,6 +16,7 @@ const PendingApprovalBanner = () => {
   const queryClient = useQueryClient();
   const { data } = useMyRegistrationPayment();
   const [receipt, setReceipt] = useState<File | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
   const upload = useMutation({
     mutationFn: (file: File) => uploadMyReceipt(file),
@@ -72,10 +73,15 @@ const PendingApprovalBanner = () => {
 
           {needsUpload && (
             <div className="max-w-md space-y-3 pt-2">
-              <ReceiptDropzone file={receipt} onChange={setReceipt} disabled={upload.isPending} />
+              <ReceiptDropzone
+                file={receipt}
+                onChange={setReceipt}
+                disabled={upload.isPending}
+                onPreparingChange={setPreparing}
+              />
               <Button
                 size="sm"
-                disabled={!receipt || upload.isPending}
+                disabled={!receipt || preparing || upload.isPending}
                 onClick={() => receipt && upload.mutate(receipt)}
               >
                 {upload.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
