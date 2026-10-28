@@ -54,6 +54,7 @@ export default {
         gold: {
           DEFAULT: "hsl(var(--gold))",
           foreground: "hsl(var(--gold-foreground))",
+          strong: "hsl(var(--gold-strong))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

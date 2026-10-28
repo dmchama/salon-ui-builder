@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState, Panel, SectionSkeleton, StatusBadge } from "@/components/app-shell/parts";
 import {
   Select,
   SelectContent,
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarCheck, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
+import { CalendarCheck, CheckCircle, XCircle, Clock, Eye, Store } from "lucide-react";
 import { toast } from "sonner";
 import {
   fetchSalonBookings,
@@ -30,13 +30,6 @@ import {
 } from "@/api/bookings-api";
 import { ApiError } from "@/api/http";
 
-
-function titleCaseStatus(status: string) {
-  return status
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 function displayCustomerName(b: SalonBookingRow) {
   if (b.guestName?.trim()) return b.guestName.trim();
@@ -50,13 +43,6 @@ function displayCustomerName(b: SalonBookingRow) {
 function displayPhone(b: SalonBookingRow) {
   return b.guestPhone?.trim() || b.customer?.phone || "—";
 }
-
-const statusColors: Record<string, string> = {
-  CONFIRMED: "bg-green-600 hover:bg-green-700 text-white border-0",
-  CANCELLED: "bg-red-500 hover:bg-red-600 text-white border-0",
-  COMPLETED: "bg-slate-500 hover:bg-slate-600 text-white border-0",
-  NO_SHOW: "bg-orange-600 hover:bg-orange-700 text-white border-0",
-};
 
 type FilterValue = "all" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 
@@ -77,6 +63,7 @@ const BookingManager = ({ salonId }: Props) => {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["salon-bookings", salonId] });
     queryClient.invalidateQueries({ queryKey: ["owner-dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["owner-insights"] });
   };
 
   const statusMutation = useMutation({
@@ -95,119 +82,140 @@ const BookingManager = ({ salonId }: Props) => {
 
   if (!salonId) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-12 tracking-wide">
-        Select a salon above to load bookings.
-      </p>
+      <Panel>
+        <EmptyState icon={Store} title="No branch selected" description="Choose a branch at the top to see its bookings." />
+      </Panel>
     );
   }
 
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground py-8">Loading bookings…</p>;
-  }
+  if (isLoading) return <SectionSkeleton />;
+
+  const rowActions = (booking: SalonBookingRow) => (
+    <div className="flex items-center justify-end gap-1">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedBooking(booking)} aria-label="View details" title="View details">
+        <Eye className="h-4 w-4" />
+      </Button>
+      {booking.status === "CONFIRMED" && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+            onClick={() => statusMutation.mutate({ id: booking.id, status: "COMPLETED" })}
+            aria-label="Mark complete"
+            title="Mark complete"
+          >
+            <CheckCircle className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:bg-red-50"
+            onClick={() => setBookingToCancel(booking.id)}
+            aria-label="Cancel booking"
+            title="Cancel booking"
+          >
+            <XCircle className="h-4 w-4" />
+          </Button>
+        </>
+      )}
+    </div>
+  );
+
+  const when = (b: SalonBookingRow) =>
+    new Date(b.startAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{filtered.length} bookings</span>
-        </div>
-        <Select value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
-          <SelectTrigger className="w-44 h-8 text-sm rounded-none">
-            <SelectValue placeholder="Filter" />
-          </SelectTrigger>
-          <SelectContent className="rounded-none">
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-            <SelectItem value="COMPLETED">Completed</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            <SelectItem value="NO_SHOW">No show</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Panel
+        title={`${filtered.length} ${filtered.length === 1 ? "booking" : "bookings"}`}
+        actions={
+          <Select value={filter} onValueChange={(v) => setFilter(v as FilterValue)}>
+            <SelectTrigger className="h-9 w-44 rounded-lg" aria-label="Filter by status">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              <SelectItem value="NO_SHOW">No show</SelectItem>
+            </SelectContent>
+          </Select>
+        }
+        bodyClassName="p-0"
+      >
+        {filtered.length === 0 ? (
+          <EmptyState
+            icon={CalendarCheck}
+            title={filter === "all" ? "No bookings yet" : "No bookings with this status"}
+            description={filter === "all" ? "Bookings appear here as soon as guests book online." : "Try another filter."}
+          />
+        ) : (
+          <>
+            {/* Desktop: table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-5">Guest</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>When</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="pr-5 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((booking) => (
+                    <TableRow key={booking.id}>
+                      <TableCell className="pl-5">
+                        <div className="font-medium">{displayCustomerName(booking)}</div>
+                        <div className="text-xs text-muted-foreground">{displayPhone(booking)}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div>{booking.service.name}</div>
+                        {booking.technician && <div className="text-xs text-muted-foreground">with {booking.technician.name}</div>}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">{when(booking)}</TableCell>
+                      <TableCell>
+                        <StatusBadge kind="booking" status={booking.status} />
+                      </TableCell>
+                      <TableCell className="pr-5">{rowActions(booking)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-      <div className="space-y-3">
-        {filtered.map((booking) => {
-          const start = new Date(booking.startAt);
-          const dateStr = start.toLocaleDateString();
-          const timeStr = start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-          const badgeClass =
-            statusColors[booking.status] ?? "bg-secondary text-secondary-foreground border-0";
-
-          return (
-            <Card key={booking.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-medium text-sm">{displayCustomerName(booking)}</h3>
-                      <Badge className={`${badgeClass} capitalize`}>{titleCaseStatus(booking.status)}</Badge>
+            {/* Phone: stacked list */}
+            <ul className="divide-y divide-border/70 md:hidden">
+              {filtered.map((booking) => (
+                <li key={booking.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{displayCustomerName(booking)}</span>
+                      <StatusBadge kind="booking" status={booking.status} />
                     </div>
-                    <p className="text-xs text-muted-foreground">{booking.service.name}</p>
-                    {booking.technician && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Technician:{" "}
-                        <span className="text-foreground font-medium">{booking.technician.name}</span>
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {dateStr} · {timeStr}
+                    <p className="text-sm text-muted-foreground">{booking.service.name}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" /> {when(booking)}
                     </p>
-                    {booking.notes && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">&quot;{booking.notes}&quot;</p>
-                    )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setSelectedBooking(booking)}
-                      title="View details"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                    {booking.status === "CONFIRMED" && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-green-600"
-                          onClick={() => statusMutation.mutate({ id: booking.id, status: "COMPLETED" })}
-                          title="Mark complete"
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => setBookingToCancel(booking.id)}
-                          title="Cancel"
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground text-sm">No bookings found</div>
+                  {rowActions(booking)}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-      </div>
+      </Panel>
 
       <Dialog
         open={!!selectedBooking}
         onOpenChange={(open) => !open && setSelectedBooking(null)}
       >
-        <DialogContent className="rounded-none">
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Booking Details</DialogTitle>
+            <DialogTitle>Booking details</DialogTitle>
           </DialogHeader>
           {selectedBooking && (
             <div className="space-y-3">
@@ -236,15 +244,8 @@ const BookingManager = ({ salonId }: Props) => {
                 )}
                 <div>
                   <span className="text-muted-foreground">Status</span>
-                  <p>
-                    <Badge
-                      className={
-                        statusColors[selectedBooking.status] ??
-                        "bg-secondary text-secondary-foreground border-0"
-                      }
-                    >
-                      {titleCaseStatus(selectedBooking.status)}
-                    </Badge>
+                  <p className="mt-0.5">
+                    <StatusBadge kind="booking" status={selectedBooking.status} />
                   </p>
                 </div>
                 <div>
@@ -270,7 +271,7 @@ const BookingManager = ({ salonId }: Props) => {
 
 
       <AlertDialog open={!!bookingToCancel} onOpenChange={(open) => !open && setBookingToCancel(null)}>
-        <AlertDialogContent className="rounded-none">
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -278,9 +279,9 @@ const BookingManager = ({ salonId }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none">Keep booking</AlertDialogCancel>
+            <AlertDialogCancel>Keep booking</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (bookingToCancel) {
                   statusMutation.mutate({ id: bookingToCancel, status: "CANCELLED" });

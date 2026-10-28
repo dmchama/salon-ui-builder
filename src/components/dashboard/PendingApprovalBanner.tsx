@@ -35,7 +35,7 @@ const PendingApprovalBanner = () => {
 
   return (
     <div
-      className={`mb-10 border p-6 rounded-sm ${
+      className={`rounded-2xl border p-5 shadow-soft ${
         rejected ? "border-red-300 bg-red-50 text-red-900" : "border-amber-300 bg-amber-50 text-amber-900"
       }`}
     >

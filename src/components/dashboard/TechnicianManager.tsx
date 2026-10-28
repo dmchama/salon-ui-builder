@@ -67,7 +67,7 @@ const TechForm = ({
     <div className="space-y-2">
       <Label>Name</Label>
       <Input
-        className="rounded-none"
+       
         value={form.name}
         onChange={(e) => onChange("name", e.target.value)}
         placeholder="Staff display name"
@@ -79,7 +79,7 @@ const TechForm = ({
           <Phone className="h-3.5 w-3.5" /> Phone
         </Label>
         <Input
-          className="rounded-none"
+         
           value={form.phone}
           onChange={(e) => onChange("phone", e.target.value)}
           placeholder="Optional"
@@ -91,7 +91,7 @@ const TechForm = ({
         </Label>
         <Input
           type="email"
-          className="rounded-none"
+         
           value={form.email}
           onChange={(e) => onChange("email", e.target.value)}
           placeholder="Optional"
@@ -101,7 +101,7 @@ const TechForm = ({
     <div className="space-y-2">
       <Label>Specialization</Label>
       <Textarea
-        className="rounded-none resize-y min-h-[72px]"
+        className="resize-y min-h-[72px]"
         value={form.specialization}
         onChange={(e) => onChange("specialization", e.target.value)}
         placeholder="e.g. Color, cuts, bridal…"
@@ -239,20 +239,20 @@ const TechnicianManager = ({ salonId }: Props) => {
         </p>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1 rounded-none">
+            <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" /> Add technician
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-none">
+          <DialogContent className="rounded-2xl">
             <DialogHeader>
               <DialogTitle className="font-display">New technician</DialogTitle>
             </DialogHeader>
             <TechForm form={newForm} onChange={(f, v) => setNewForm((p) => ({ ...p, [f]: v }))} />
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" className="rounded-none" onClick={() => setIsAddOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddOpen(false)}>
                 Cancel
               </Button>
-              <Button className="rounded-none" onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+              <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>
                 Save
               </Button>
             </div>
@@ -266,14 +266,14 @@ const TechnicianManager = ({ salonId }: Props) => {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 flex-1 min-w-0">
-                  <div className="w-12 h-12 shrink-0 border border-border flex items-center justify-center bg-secondary/40">
-                    <User className="h-5 w-5 text-muted-foreground" />
+                  <div className="w-12 h-12 shrink-0 rounded-full bg-gold/10 flex items-center justify-center">
+                    <User className="h-5 w-5 text-gold-strong" aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-medium text-sm">{t.name}</h3>
                       {!t.active && (
-                        <Badge variant="outline" className="text-xs rounded-none">
+                        <Badge variant="outline" className="text-xs">
                           Inactive
                         </Badge>
                       )}
@@ -319,7 +319,7 @@ const TechnicianManager = ({ salonId }: Props) => {
       )}
 
       <AlertDialog open={!!toDeactivate} onOpenChange={(open) => !open && setToDeactivate(null)}>
-        <AlertDialogContent className="rounded-none">
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Deactivate technician?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -327,9 +327,9 @@ const TechnicianManager = ({ salonId }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none">Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => toDeactivate && deactivateMut.mutate(toDeactivate)}
             >
               Deactivate
@@ -339,7 +339,7 @@ const TechnicianManager = ({ salonId }: Props) => {
       </AlertDialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="rounded-none">
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Edit technician</DialogTitle>
           </DialogHeader>
@@ -351,10 +351,10 @@ const TechnicianManager = ({ salonId }: Props) => {
             />
           )}
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" className="rounded-none" onClick={() => setIsEditOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
-            <Button className="rounded-none" onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
+            <Button onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
               Save
             </Button>
           </div>

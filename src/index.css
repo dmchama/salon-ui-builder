@@ -38,14 +38,18 @@
 
     --gold: 36 65% 50%;
     --gold-foreground: 0 0% 100%;
+    /* Darker brand gold for text and button fills on light backgrounds (AA ~4.9:1 with white). Feature 004. */
+    --gold-strong: 33 75% 36%;
 
-    --sidebar-background: 240 5% 97%;
-    --sidebar-foreground: 240 5% 26%;
+    /* Sidebar of the logged-in areas (owner dashboard, admin panel): dark brand. Feature 004.
+       Only the app shell uses the sidebar component. */
+    --sidebar-background: 240 10% 6%;
+    --sidebar-foreground: 240 5% 72%;
     --sidebar-primary: 36 65% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 91%;
-    --sidebar-accent-foreground: 240 5% 26%;
-    --sidebar-border: 240 6% 90%;
+    --sidebar-primary-foreground: 240 10% 6%;
+    --sidebar-accent: 240 8% 13%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 8% 15%;
     --sidebar-ring: 36 65% 50%;
 
     --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
@@ -91,6 +95,14 @@
     --sidebar-accent-foreground: 240 5% 84%;
     --sidebar-border: 240 8% 19%;
     --sidebar-ring: 36 65% 52%;
+  }
+}
+
+@layer base {
+  /* Set on <html> while the owner dashboard or admin panel is open (AppShell). Primary buttons use
+     the darker brand gold so white labels meet WCAG AA. Feature 004. */
+  .app-area {
+    --primary: 33 75% 36%;
   }
 }
 

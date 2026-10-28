@@ -22,9 +22,12 @@ const queryClient = new QueryClient();
 
 const AnimatedRoutes = () => {
   const location = useLocation();
+  // Dashboard and admin sections live in the URL; keep one key per area so switching sections
+  // doesn't replay the page transition or remount the page (spec 004).
+  const area = location.pathname.match(/^\/(dashboard|admin)(\/|$)/)?.[1];
   return (
     <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes location={location} key={area ? `/${area}` : location.pathname}>
         <Route path="/" element={<Index />} />
         <Route path="/salons" element={<Salons />} />
         <Route path="/salon/:slug" element={<SalonDetail />} />
@@ -33,8 +36,8 @@ const AnimatedRoutes = () => {
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/dashboard/:section?" element={<Dashboard />} />
+        <Route path="/admin/:section?" element={<Admin />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>

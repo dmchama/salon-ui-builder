@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/app-shell/parts";
 import { Settings, Bell, CreditCard, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { fetchMe } from "@/api/users-api";
@@ -40,9 +40,9 @@ const SettingsPanel = ({ subscription }: Props) => {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-none">
+      <Card>
         <CardHeader>
-          <CardTitle className="font-display text-lg flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Shield className="h-4 w-4" /> Account
           </CardTitle>
         </CardHeader>
@@ -53,11 +53,11 @@ const SettingsPanel = ({ subscription }: Props) => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Name</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Name</p>
                   <p className="font-medium">{ownerLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Email</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Email</p>
                   <p className="font-medium">{me?.email ?? "—"}</p>
                 </div>
               </div>
@@ -69,9 +69,9 @@ const SettingsPanel = ({ subscription }: Props) => {
         </CardContent>
       </Card>
 
-      <Card className="rounded-none">
+      <Card>
         <CardHeader>
-          <CardTitle className="font-display text-lg flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Bell className="h-4 w-4" /> Notifications
           </CardTitle>
         </CardHeader>
@@ -106,9 +106,9 @@ const SettingsPanel = ({ subscription }: Props) => {
         </CardContent>
       </Card>
 
-      <Card className="rounded-none">
+      <Card>
         <CardHeader>
-          <CardTitle className="font-display text-lg flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <CreditCard className="h-4 w-4" /> Subscription
           </CardTitle>
         </CardHeader>
@@ -118,7 +118,7 @@ const SettingsPanel = ({ subscription }: Props) => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-medium text-sm">{subscription.plan.name}</p>
-                  <Badge className="rounded-none">{subscription.status}</Badge>
+                  <StatusBadge kind="subscription" status={subscription.status} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {formatPlanPrice(subscription.plan.priceCents, subscription.plan.currency)} per{" "}
@@ -137,7 +137,7 @@ const SettingsPanel = ({ subscription }: Props) => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} className="gap-2 rounded-none">
+        <Button onClick={handleSave} className="gap-2">
           <Settings className="h-4 w-4" /> Save preferences (local)
         </Button>
       </div>

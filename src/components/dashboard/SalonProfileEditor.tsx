@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge, ToneBadge } from "@/components/app-shell/parts";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   MapPin,
@@ -490,9 +490,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                   <div>
                     <CardTitle className="font-display text-lg">Salon profile</CardTitle>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant={selectedSalon.status === "PUBLISHED" ? "default" : "secondary"}>
-                        {selectedSalon.status}
-                      </Badge>
+                      <StatusBadge kind="salon" status={selectedSalon.status} />
                       {selectedSalon.status === "DRAFT" && (
                         <Button
                           size="sm"
@@ -679,7 +677,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                           <div className="flex flex-wrap items-center gap-2 flex-1">
                             <Input
                               type="time"
-                              className="w-36 rounded-none"
+                              className="w-36"
                               disabled={row.closed}
                               value={row.open}
                               onChange={(e) =>
@@ -692,7 +690,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                             <span className="text-muted-foreground text-sm">to</span>
                             <Input
                               type="time"
-                              className="w-36 rounded-none"
+                              className="w-36"
                               disabled={row.closed}
                               value={row.close}
                               onChange={(e) =>
@@ -854,7 +852,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-muted-foreground uppercase tracking-widest text-xs">
+                    <Label className="text-sm font-medium text-muted-foreground">
                       Current images ({galleryLoading ? "…" : galleryItems.length})
                     </Label>
                     {galleryItems.length === 0 && !galleryLoading && (
@@ -881,7 +879,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                               />
                               {isCover && (
                                 <div className="absolute inset-0 flex items-end justify-center pb-1">
-                                  <span className="text-[9px] font-bold uppercase tracking-widest bg-amber-400 text-white px-1.5 py-0.5 rounded-sm leading-none">
+                                  <span className="rounded-full bg-gold-strong px-2 py-0.5 text-[10px] font-semibold leading-none text-white">
                                     Cover
                                   </span>
                                 </div>
@@ -953,10 +951,10 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 rounded-none text-xs uppercase tracking-widest shrink-0"
+              className="gap-1.5 shrink-0"
               onClick={() => setAddBranchOpen(true)}
             >
-              <Plus className="h-3.5 w-3.5" /> Add Branch
+              <Plus className="h-3.5 w-3.5" /> Add branch
             </Button>
           </CardHeader>
           <CardContent>
@@ -966,7 +964,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                 return (
                   <div
                     key={branch.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-sm transition-colors ${
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-xl transition-colors ${
                       branch.id === selectedId
                         ? "border-foreground/20 bg-muted/40"
                         : "border-border"
@@ -975,7 +973,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="mt-0.5 shrink-0">
                         {branch.isDefault ? (
-                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                          <Star className="h-4 w-4 fill-gold text-gold" />
                         ) : (
                           <GitBranch className="h-4 w-4 text-muted-foreground" />
                         )}
@@ -984,22 +982,9 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm">{branch.name}</span>
                           {branch.isDefault && (
-                            <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-sm">
-                              Default
-                            </span>
+                            <ToneBadge tone="brand" label="Default" />
                           )}
-                          <Badge
-                            variant="secondary"
-                            className={`text-[10px] px-1.5 py-0 ${
-                              branch.status === "PUBLISHED"
-                                ? "bg-green-100 text-green-700 border-green-200"
-                                : branch.status === "SUSPENDED"
-                                ? "bg-red-100 text-red-700 border-red-200"
-                                : "bg-secondary text-muted-foreground"
-                            }`}
-                          >
-                            {branch.status}
-                          </Badge>
+                          <StatusBadge kind="salon" status={branch.status} />
                         </div>
                         {locationLine && (
                           <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -1054,9 +1039,9 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
 
       {/* Add branch dialog */}
       <Dialog open={addBranchOpen} onOpenChange={setAddBranchOpen}>
-        <DialogContent className="rounded-none max-w-md">
+        <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
-            <DialogTitle className="uppercase tracking-widest text-sm">New Branch</DialogTitle>
+            <DialogTitle>New branch</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
@@ -1108,7 +1093,7 @@ const SalonProfileEditor = ({ salonId }: { salonId?: string | null }) => {
               Starts as <strong>Draft</strong>. Go to the branch profile to fill in details and publish.
             </p>
             <Button
-              className="w-full rounded-none uppercase tracking-widest text-xs"
+              className="w-full"
               disabled={
                 !branchForm.name.trim() ||
                 !branchForm.slug.trim() ||

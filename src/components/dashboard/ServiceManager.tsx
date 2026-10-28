@@ -75,7 +75,7 @@ const ServiceForm = ({
     <div className="space-y-2">
       <Label>Service name</Label>
       <Input
-        className="rounded-none"
+       
         value={form.name}
         onChange={(e) => onChange("name", e.target.value)}
         placeholder="e.g. Haircut & styling"
@@ -84,7 +84,7 @@ const ServiceForm = ({
     <div className="space-y-2">
       <Label>Description</Label>
       <Textarea
-        className="rounded-none resize-y min-h-[100px]"
+        className="resize-y min-h-[100px]"
         value={form.description}
         onChange={(e) => onChange("description", e.target.value)}
         placeholder="What clients should expect…"
@@ -100,7 +100,7 @@ const ServiceForm = ({
           type="number"
           min={0}
           step={1}
-          className="rounded-none"
+         
           value={form.priceRupees}
           onChange={(e) => onChange("priceRupees", e.target.value)}
           placeholder="0"
@@ -113,7 +113,7 @@ const ServiceForm = ({
         <Input
           type="number"
           min={5}
-          className="rounded-none"
+         
           value={form.durationMin}
           onChange={(e) => onChange("durationMin", e.target.value)}
           placeholder="45"
@@ -259,11 +259,11 @@ const ServiceManager = ({ salonId }: Props) => {
         </p>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1 rounded-none">
+            <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" /> Add service
             </Button>
           </DialogTrigger>
-          <DialogContent className="rounded-none">
+          <DialogContent className="rounded-2xl">
             <DialogHeader>
               <DialogTitle className="font-display">New service</DialogTitle>
             </DialogHeader>
@@ -273,10 +273,10 @@ const ServiceManager = ({ salonId }: Props) => {
               onChange={(f, v) => setNewForm((prev) => ({ ...prev, [f]: v }))}
             />
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" className="rounded-none" onClick={() => setIsAddOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddOpen(false)}>
                 Cancel
               </Button>
-              <Button className="rounded-none" onClick={() => createMut.mutate()} disabled={createMut.isPending}>
+              <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>
                 Save
               </Button>
             </div>
@@ -290,14 +290,14 @@ const ServiceManager = ({ salonId }: Props) => {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 flex-1 min-w-0">
-                  <div className="w-16 h-16 shrink-0 border border-black/5 bg-black/5 flex items-center justify-center">
-                    <Scissors className="h-5 w-5 text-black/20" />
+                  <div className="w-14 h-14 shrink-0 rounded-xl bg-gold/10 flex items-center justify-center">
+                    <Scissors className="h-5 w-5 text-gold-strong" aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-medium text-sm">{service.name}</h3>
                       {!service.active && (
-                        <Badge variant="outline" className="text-xs rounded-none">
+                        <Badge variant="outline" className="text-xs">
                           Inactive
                         </Badge>
                       )}
@@ -305,11 +305,11 @@ const ServiceManager = ({ salonId }: Props) => {
                     {service.description && (
                       <p className="text-xs text-muted-foreground mb-2">{service.description}</p>
                     )}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span className="whitespace-nowrap font-medium text-foreground">
                         Rs. {centsToRupees(service.priceCents).toLocaleString()}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 whitespace-nowrap">
                         <Clock className="h-3 w-3" /> {service.durationMin} mins
                       </span>
                     </div>
@@ -348,7 +348,7 @@ const ServiceManager = ({ salonId }: Props) => {
         open={!!serviceToDeactivate}
         onOpenChange={(open) => !open && setServiceToDeactivate(null)}
       >
-        <AlertDialogContent className="rounded-none">
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Deactivate service?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -356,9 +356,9 @@ const ServiceManager = ({ salonId }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none">Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => serviceToDeactivate && deactivateMut.mutate(serviceToDeactivate)}
             >
               Deactivate
@@ -368,7 +368,7 @@ const ServiceManager = ({ salonId }: Props) => {
       </AlertDialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="rounded-none">
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Edit service</DialogTitle>
           </DialogHeader>
@@ -380,10 +380,10 @@ const ServiceManager = ({ salonId }: Props) => {
             />
           )}
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" className="rounded-none" onClick={() => setIsEditOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
-            <Button className="rounded-none" onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
+            <Button onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
               Save
             </Button>
           </div>

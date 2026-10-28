@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/app-shell/parts";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Loader2, Users, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Plus, Loader2, Users, CheckCircle2 } from "lucide-react";
 import ReceiptDropzone from "@/components/registration/ReceiptDropzone";
 import { toast } from "sonner";
 import {
@@ -50,11 +50,6 @@ function buildMessage(opts: {
   return `Hi! Special offer: Get ${discountPct}% off ${serviceDesc} at our salon!${period} Use the link below to book with discount applied.`;
 }
 
-function StatusBadge({ status }: { status: CampaignHistoryRow["status"] }) {
-  if (status === "APPROVED") return <Badge className="bg-green-100 text-green-700 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
-  if (status === "REJECTED") return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-  return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-}
 
 interface Props {
   salonId: string | null;
@@ -332,7 +327,7 @@ const PromotionSMS = ({ salonId }: Props) => {
               <TableRow key={row.id}>
                 <TableCell className="font-medium">{row.campaignName}</TableCell>
                 <TableCell>
-                  <StatusBadge status={row.status} />
+                  <StatusBadge kind="campaign" status={row.status} />
                   {row.adminNote && (
                     <p className="text-xs text-muted-foreground mt-1 max-w-[160px] truncate" title={row.adminNote}>{row.adminNote}</p>
                   )}
